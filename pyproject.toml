@@ -25,3 +25,7 @@ classifiers = [
 [project.urls]
 Repository = "https://github.com/ShawnEsterman/aio-etsy-stats"
 "Bug Tracker" = "https://github.com/ShawnEsterman/aio-etsy-stats/issues"
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
