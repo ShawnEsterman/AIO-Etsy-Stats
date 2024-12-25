@@ -9,5 +9,5 @@ services:
       - PGID=1000
       - TZ=America/Chicago
     command: bash -c "pip install /app/. && python /app/src/main.py"
-    mount:
+    volumes:
       - .:/app
