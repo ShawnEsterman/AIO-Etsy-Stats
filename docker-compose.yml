@@ -1,0 +1,12 @@
+version: "3.4"
+
+services:
+  etsy_parse:
+    image: python:3.13-slim-bullseye
+    container_name: etsy-parse
+    restart: always
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    command: bash -c "pip install . && python src/main.py"
