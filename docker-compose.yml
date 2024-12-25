@@ -8,6 +8,6 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=America/Chicago
-    command: bash -c "pip install /app/. && python /app/aio_etsy_stats/main.py"
+    command: bash -c "pip install pkg_resources --user && pip install /app/. --user && python /app/aio_etsy_stats/main.py"
     volumes:
       - .:/app
