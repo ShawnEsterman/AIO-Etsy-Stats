@@ -1,5 +1,5 @@
 [project]
-name = "aio-etsy-stats"
+name = "aio_etsy_stats"
 version = "1.0.0"
 dependencies = [
     "adafruit-io==2.8.0",
