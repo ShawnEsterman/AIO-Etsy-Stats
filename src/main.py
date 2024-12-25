@@ -256,7 +256,7 @@ class EstyStoreStats:
         try:
             scripts = soup.find_all(name="script")
             for script in scripts:
-                match = re.search(".*\"num_favorers\":(\d+),.*", script.get_text().strip())
+                match = re.search(r".*\"num_favorers\":(\d+),.*", script.get_text().strip())
                 if match:
                     favorites = int(match[1])
         except Exception as e:
@@ -280,7 +280,7 @@ class EstyStoreStats:
         # region ratings
         if found_rating:
             try:
-                found_ratings = found_rating.parent.parent.find(string=re.compile("\(\d+\)"))
+                found_ratings = found_rating.parent.parent.find(string=re.compile(r"\(\d+\)"))
                 if found_ratings:
                     ratings = int(found_ratings.strip().replace("(", "").replace(")", ""))
             except Exception as e:
