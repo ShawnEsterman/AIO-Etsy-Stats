@@ -8,4 +8,6 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=America/Chicago
-    command: bash -c "pip install . && python src/main.py"
+    command: bash -c "pip install /app/. && python /app/src/main.py"
+    mount:
+      - .:/app
