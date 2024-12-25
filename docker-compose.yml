@@ -1,5 +1,4 @@
-version: "3.4"
-
+---
 services:
   etsy_parse:
     image: python:3.13-slim-bullseye
