@@ -1,0 +1,27 @@
+[project]
+name = "aio-etsy-stats"
+version = "1.0.0"
+dependencies = [
+    "adafruit-io==2.8.0",
+    "beautifulsoup4==4.12.3",
+    "requests==2.32.3",
+    "schedule==1.2.2"
+]
+requires-python = ">=3.8"
+authors = [
+  {name = "Shawn Esterman", email = "shawn.esterman@gmail.com"},
+]
+maintainers = [
+  {name = "Shawn Esterman", email = "shawn.esterman@gmail.com"},
+]
+description = "Python script to scrape an Etsy store page and publish stats to Adafruit IO."
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["python", "etsy", "adafruit io"]
+classifiers = [
+  "Programming Language :: Python"
+]
+
+[project.urls]
+Repository = "https://github.com/ShawnEsterman/aio-etsy-stats"
+"Bug Tracker" = "https://github.com/ShawnEsterman/aio-etsy-stats/issues"
