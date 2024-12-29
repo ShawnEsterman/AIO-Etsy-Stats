@@ -186,7 +186,7 @@ class EstyStoreStats:
                 self.logger.debug(f"Updating AIO feed {feed} to {value}")
                 if isinstance(value, dict):
                     value = str(value)
-                self._aio.send_data(feed=feed, value=value)
+                _ = self._aio.send_data(feed=feed, value=value)
             except Exception as e:
                 self.logger.warning(f"An error occurred updating AIO feed {feed} to {value}")
                 self.logger.exception(e)
@@ -342,14 +342,14 @@ class EstyStoreStats:
         if stats.favorites:
             favorites_change = stats.favorites - self.favorites_start
             if favorites_change != self.favorites_change:
-                self.logger.info(f"A new favorite was found {self.favorites_change} -> {favorites_change}")
+                self.logger.info(f"The favorite count changed {self.favorites_change} -> {favorites_change}")
                 self.favorites_change = favorites_change
                 self.send_aio(feed=self.get_feed_name("favorites-change"), value=self.favorites_change)
 
         if stats.rating:
             rating_change = stats.rating - self.rating_start
             if rating_change != self.rating_change:
-                message = f"Your rating changed {self.rating_change} -> {rating_change}"
+                message = f"The rating changed from {self.rating_start} to {self.rating_start + rating_change}"
                 if rating_change > 0:
                     self.logger.info(message)
                 else:
@@ -361,14 +361,14 @@ class EstyStoreStats:
         if stats.ratings:
             ratings_change = stats.ratings - self.ratings_start
             if ratings_change != self.ratings_change:
-                self.logger.info(f"Your ratings changed {self.ratings_change} -> {ratings_change}")
+                self.logger.info(f"The rating count changed {self.ratings_change} -> {ratings_change}")
                 self.ratings_change = ratings_change
                 self.send_aio(feed=self.get_feed_name("ratings-change"), value=self.ratings_change)
 
         if stats.sales:
             sales_change = stats.sales - self.sales_start
             if sales_change != self.sales_change:
-                self.logger.info(f"Your sales changed {self.sales_change} -> {sales_change}")
+                self.logger.info(f"The sales count changed {self.sales_change} -> {sales_change}")
                 self.sales_change = sales_change
                 self.send_aio(feed=self.get_feed_name("sales-change"), value=self.sales_change)
 
