@@ -124,12 +124,22 @@ class EstyStoreStats:
         :return:
         """
         session = Session()
+
+        # Randomize the referer each time
+        referer = choice(seq=[
+            "https://www.google.com/",
+            "https://www.bing.com/",
+            "https://www.yahoo.com/"
+            f"https://www.etsy.com/shop/{self.shop}?ref=sim_anchor",
+        ])
+
         session.headers = {
             "User-Agent": "XYZ/3.0",
-            "Referer": f"https://www.etsy.com/shop/{self.shop}?ref=sim_anchor",
+            "Referer": referer,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
                       ",application/signed-exchange;v=b3;q=0.7",
-            "Cache-Control": "no-cache",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Cache-Control": "max-age=0",
         }
         session.mount("https://", HTTPAdapter(max_retries=3))
         return session
