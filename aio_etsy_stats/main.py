@@ -41,17 +41,6 @@ class EstyStoreStats:
         handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
         self.logger.addHandler(handler)
 
-        # Session
-        self._session = Session()
-        self._session.headers = {
-            "User-Agent": "XYZ/3.0",
-            "Referer": f"https://www.etsy.com/shop/{self.shop}?ref=sim_anchor",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
-                      ",application/signed-exchange;v=b3;q=0.7",
-
-        }
-        self._session.mount("https://", HTTPAdapter(max_retries=3))
-
         # region setup AIO
         if all([aio_username, aio_password]):
             # Create aio if username and password were supplied
@@ -123,9 +112,27 @@ class EstyStoreStats:
         self.validate_reset_hour()
         self.update_total = int(self.receive_aio(feed=self.get_feed_name("update-total"), default_value=0))
         # Get Etsy.com to make sure its working and you establish cookies
-        _ = self._session.get("https://www.etsy.com/")
+        session = self.get_session()
+        _ = session.get("https://www.etsy.com/")
+        del session
         # Collect stats at first run
         self.collect_and_publish()
+
+    def get_session(self) -> Session:
+        """
+        Returns a session object to use to query things
+        :return:
+        """
+        session = Session()
+        session.headers = {
+            "User-Agent": "XYZ/3.0",
+            "Referer": f"https://www.etsy.com/shop/{self.shop}?ref=sim_anchor",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+                      ",application/signed-exchange;v=b3;q=0.7",
+            "Cache-Control": "no-cache",
+        }
+        session.mount("https://", HTTPAdapter(max_retries=3))
+        return session
 
     def validate_reset_hour(self):
         """
@@ -243,8 +250,10 @@ class EstyStoreStats:
         errors = 0
 
         try:
-            response = self._session.get(url=self.url)
+            session = self.get_session()
+            response = session.get(url=self.url)
             response.raise_for_status()
+            del session
         except Exception as e:
             self.logger.warning(f"Could not get url: {self.url}")
             self.logger.exception(e)
