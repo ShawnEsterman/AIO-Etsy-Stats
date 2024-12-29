@@ -1,8 +1,8 @@
 ---
 services:
-  etsy_parse:
+  aio_etsy_stats:
     image: python:3.13-slim-bullseye
-    container_name: etsy-parse
+    container_name: aio_etsy_stats
     restart: always
     environment:
       - PUID=1000
