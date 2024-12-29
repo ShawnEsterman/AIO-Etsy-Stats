@@ -5,7 +5,7 @@ import re
 import sys
 from datetime import datetime, date, time, timedelta
 from os import environ
-from random import random
+from random import uniform, choice
 from time import sleep
 from typing import NamedTuple
 
@@ -371,7 +371,8 @@ if __name__ == "__main__":
                             aio_password=environ.get("AIO_PASSWORD"))
 
     # Repeat to update the Etsy counts
-    schedule.every(7).minutes.do(client.collect_and_publish)
+    schedule.every(15).minutes.do(client.collect_and_publish)
     while True:
         schedule.run_pending()
-        sleep((random()*60))
+        # Sleep randomly for nearly 2 minutes
+        sleep((uniform(0.45, 0.99)*120))
