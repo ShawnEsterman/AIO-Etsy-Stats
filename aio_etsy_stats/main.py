@@ -356,7 +356,7 @@ class EstyStoreStats:
                 self.send_aio(feed=self.get_feed_name("favorites-change"), value=self.favorites_change)
 
         if stats.rating:
-            rating_change = stats.rating - self.rating_start
+            rating_change = round((stats.rating - self.rating_start), 4)
             if rating_change != self.rating_change:
                 message = f"The rating changed from {self.rating_start} to {self.rating_start + rating_change}"
                 if rating_change > 0:
