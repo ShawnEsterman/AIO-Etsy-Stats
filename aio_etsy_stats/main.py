@@ -351,14 +351,16 @@ class EstyStoreStats:
         if stats.favorites:
             favorites_change = stats.favorites - self.favorites_start
             if favorites_change != self.favorites_change:
-                self.logger.info(f"The favorite count changed {self.favorites_change} -> {favorites_change}")
+                self.logger.info(f"The favorite count changed {self.favorites_start} -> "
+                                 f"{self.favorites_start + favorites_change}")
                 self.favorites_change = favorites_change
                 self.send_aio(feed=self.get_feed_name("favorites-change"), value=self.favorites_change)
 
         if stats.rating:
             rating_change = round((stats.rating - self.rating_start), 4)
             if rating_change != self.rating_change:
-                message = f"The rating changed from {self.rating_start} to {self.rating_start + rating_change}"
+                message = f"The rating changed from {self.rating_start} to " \
+                          f"{self.rating_start + rating_change}"
                 if rating_change > 0:
                     self.logger.info(message)
                 else:
@@ -370,14 +372,15 @@ class EstyStoreStats:
         if stats.ratings:
             ratings_change = stats.ratings - self.ratings_start
             if ratings_change != self.ratings_change:
-                self.logger.info(f"The rating count changed {self.ratings_change} -> {ratings_change}")
+                self.logger.info(f"The rating count changed {self.ratings_start} -> "
+                                 f"{self.ratings_start + ratings_change}")
                 self.ratings_change = ratings_change
                 self.send_aio(feed=self.get_feed_name("ratings-change"), value=self.ratings_change)
 
         if stats.sales:
             sales_change = stats.sales - self.sales_start
             if sales_change != self.sales_change:
-                self.logger.info(f"The sales count changed {self.sales_change} -> {sales_change}")
+                self.logger.info(f"The sales count changed {self.sales_start} -> {self.sales_start + sales_change}")
                 self.sales_change = sales_change
                 self.send_aio(feed=self.get_feed_name("sales-change"), value=self.sales_change)
 
