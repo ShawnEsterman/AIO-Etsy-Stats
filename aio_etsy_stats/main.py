@@ -334,9 +334,18 @@ class EstyStoreStats:
         stats = self.scrape_etsy_stats()
         if stats.errors > 0:
             self.send_aio(feed=self.get_feed_name("error-count"), value=stats.errors)
+        if (self.update_total % 10) == 0:
+            self.logger.info("Logging current stats")
+            self.logger.info(str(dict([
+                ("favorites", stats.favorites), ("favorites-start", self.favorites_start),
+                ("rating", stats.rating), ("rating-start", self.rating_start),
+                ("ratings", stats.ratings), ("ratings-start", self.ratings_start),
+                ("sales", stats.sales), ("sales-start", self.sales_start),
+            ])))
 
         # If we passed reset_datetime, process the reset using the current stats
         if datetime.now() > self.reset_datetime:
+            self.logger.info(f"Reset time of {self.reset_datetime} has been passed")
             self.reset_counts(stats=stats)
 
         if stats.favorites:
