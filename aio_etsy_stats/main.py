@@ -416,7 +416,7 @@ if __name__ == "__main__":
     logging.basicConfig()
 
     client = AIOEtsyStats(shop=environ.get("ETSY_STORE_NAME"),
-                          default_reset_hour=int(environ.get("DEFAULT_RESET_HOUR")),
+                          default_reset_hour=int(environ.get("DEFAULT_RESET_HOUR", 14)),
                           aio_username=environ.get("AIO_USERNAME"),
                           aio_password=environ.get("AIO_PASSWORD"),
                           discord_webhook=environ.get("DISCORD_WEBHOOK"),
