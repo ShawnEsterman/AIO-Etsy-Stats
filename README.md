@@ -21,6 +21,37 @@ create an Neon-like LED display sign that I designed in Autodesk Fusion and run 
 I had to [write the firmware](https://github.com/adafruit/circuitpython/pull/9923) for the board. Adafruit's CircuitPython seemed easier that MicroPython 
 as they have a library for Adafruit IO using MQTT. I'll try and share that code in a separate repo and post pictures of the display when it is finished.
 
+```mermaid
+---
+title: Nicole's Over-Engineered Gift
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#20c997"
+    primaryTextColor: "#212529"
+    primaryBorderColor: "#adb5bd"
+    lineColor: "#6610f2"
+    secondaryColor: "#6f42c1"
+    tertiaryColor: "#ffc107"
+---
+flowchart LR;
+  E[Etsy]
+  A[AIOEtsyStats]
+  AIO[Adafruit IO]
+  D[Discord]
+  P[Pimoroni Plasma 2350 W]
+  N[Nicole]
+
+  E --HTML--> A;
+  A --WebRequest--> E;  
+  A <--Stats--> AIO;
+  A --Webhook--> D;
+  D --Notification--> N;
+  AIO --Dashboard--> N;
+  AIO --MQTT--> P;
+  P --Visual--> N;
+```
+
 ## Requirements
 
 **Script Runner** - I'm running this in a docker container in a stack managed by Portainer, but anywhere you can continually run the script will work. You could create a stack in
