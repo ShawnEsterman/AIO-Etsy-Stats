@@ -22,7 +22,9 @@ as they have a library for Adafruit IO using MQTT. I'll try and share that code 
 
 ## Requirements
 
-**Script Runner** - I'm running this in a docker container in a stack managed by Portainer, but anywhere you can continually run the script will work. 
+**Script Runner** - I'm running this in a docker container in a stack managed by Portainer, but anywhere you can continually run the script will work. You could create a stack in
+Portainer like I am and point to this repo, set environment variables for your needs, and deploy. However, you will need to at least request a free Business Edition license as the 
+option `Local filesystem path` needs to be used as it references other files from the repository.  
 
 ## Optional
 
