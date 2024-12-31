@@ -118,8 +118,6 @@ class AIOEtsyStats:
         starting_stats = self._get_starting_stats()
 
         # This can't be obtained from parsing, so if it doesn't exist in AIO default to 0 😓
-        self.starting_order_count: int = int(starting_stats.get("starting-order-count", 0))
-        # The rest might be in starting stats. If not, start at what is current
         self.starting_favorite_count: int = int(starting_stats.get("starting-favorite-count", stats.favorite_count))
         self.starting_rating: float = float(starting_stats.get("starting-rating", stats.rating))
         self.starting_rating_count: int = int(starting_stats.get("starting-rating-count", stats.rating_count))
@@ -251,7 +249,7 @@ class AIOEtsyStats:
         :return:
         """
         # Update all things to be equal to current stats
-        self.starting_order_count = self.daily_order_count = 0
+        self.daily_order_count = 0
         self.starting_favorite_count = self.favorite_count = stats.favorite_count
         self.starting_rating = self.rating = stats.rating
         self.starting_rating_count = self.rating_count = stats.rating_count
@@ -278,7 +276,6 @@ class AIOEtsyStats:
     def _send_starting_stats(self) -> None:
         """Sends reset info as dict/json. This is loaded if the script restarts so things aren't 0 if between resets"""
         self._send_aio(feed="starting-stats", value={
-            "starting-order-count": self.starting_order_count,
             "starting-favorite-count": self.starting_favorite_count,
             "starting-rating": self.starting_rating,
             "starting-rating-count": self.starting_rating_count,
