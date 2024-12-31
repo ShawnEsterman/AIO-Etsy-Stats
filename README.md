@@ -1,28 +1,62 @@
 # AIO Etsy Stats
 
 Python script to scrape an Etsy store page and publish stats to Adafruit IO. It will also keep track of stats from the start of the day so you
-can use the metrics to easily see how many sales in a day. 
+can use the metrics to easily see how many orders, sold items, favorites gained, or track your rating. 
 
-> [!IMPORTANT]
-> This python repository is a part of a late Christmas gift and now birthday present to my wife, Nicole, who started her Etsy store in 2024. I hope that she loves it! ❤️
-
+---
 > Cha Ching
 
 — Nicole, the inspiration
 
-Her store picked up traction this summer and she has been excited in seeing how many Etsy she makes sales in a day. She is usually happy to get 
-6-8 sales in a day. While she was away on a work trip I was on order filling duty and she would text me "Cha Ching" when she got a sale that I 
+> [!IMPORTANT]
+> This python repository is a part of a late Christmas gift and now birthday present to my wife, Nicole, who started her Etsy store in 2024. I hope that she loves it! ❤️
+
+Her store picked up traction this summer and she has been excited seeing how many Etsy she makes orders in a day. She is usually happy to get 
+6-8 orders in a day. While she was away on a work trip I was on order filling duty and she would text me "Cha Ching" when she got a order that I 
 needed to pack. I thought it was cute that she said "Cha Ching"[^1] and those 8 characters made me think... It would be cool if I could illuminate 
-1 of each of those letters for each sale she got in a day. Since 8 would be a good day.
+1 of each of those letters for each order she got in a day. Since 8 would be a good day.
 
 I intend to run this project in a [docker container](docker-compose.yml) and have it update AIO every 15 minutes. In two separate efforts I plan to 
 create an Neon-like LED display sign that I designed in Autodesk Fusion and run by a Pimoroni Plasma 2350 W microcontroller running CircuitPython. 
 I had to [write the firmware](https://github.com/adafruit/circuitpython/pull/9923) for the board. Adafruit's CircuitPython seemed easier that MicroPython 
 as they have a library for Adafruit IO using MQTT. I'll try and share that code in a separate repo and post pictures of the display when it is finished.
 
+```mermaid
+---
+title: Nicole's Over-Engineered Gift
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#20c997"
+    primaryTextColor: "#212529"
+    primaryBorderColor: "#adb5bd"
+    lineColor: "#6610f2"
+    secondaryColor: "#6f42c1"
+    tertiaryColor: "#ffc107"
+---
+flowchart LR;
+  E[Etsy]
+  A[AIOEtsyStats]
+  AIO[Adafruit IO]
+  D[Discord]
+  P[Pimoroni Plasma 2350 W]
+  N[Nicole]
+
+  E --HTML--> A;
+  A --WebRequest--> E;  
+  A <--Stats--> AIO;
+  A --Webhook--> D;
+  D --Notification--> N;
+  AIO --Dashboard--> N;
+  AIO --MQTT--> P;
+  P --Visual--> N;
+```
+
 ## Requirements
 
-**Script Runner** - I'm running this in a docker container in a stack managed by Portainer, but anywhere you can continually run the script will work. 
+**Script Runner** - I'm running this in a docker container in a stack managed by Portainer, but anywhere you can continually run the script will work. You could create a stack in
+Portainer like I am and point to this repo, set environment variables for your needs, and deploy. However, you will need to at least request a free Business Edition license as the 
+option `Local filesystem path` needs to be used as it references other files from the repository.  
 
 ## Optional
 
