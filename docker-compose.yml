@@ -11,6 +11,9 @@ services:
       - ETSY_STORE_NAME=${ETSY_STORE_NAME}
       - AIO_USERNAME=${AIO_USERNAME}
       - AIO_PASSWORD=${AIO_PASSWORD}
+      - DEFAULT_RESET_HOUR=${DEFAULT_RESET_HOUR}
+      - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
+      - DISCORD_AVATAR_URL=${DISCORD_AVATAR_URL}
     # No giving me shit about installing the project every time. I have had to teach myself a lot of new tools for this
     # and I did not want to add building a docker container using GitHub CI. I'm only familiar with building containers
     # in GitLab CI.
