@@ -1,3 +1,4 @@
+import atexit
 import datetime
 import json
 import logging
@@ -7,7 +8,7 @@ from datetime import datetime, date, time, timedelta
 from os import environ
 from random import uniform, choice
 from time import sleep
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import Adafruit_IO
 import requests
@@ -21,23 +22,29 @@ from requests.adapters import HTTPAdapter
 
 class EtsyStoreStats(NamedTuple):
     """Used to format stats from Etsy store"""
-    favorite_count: int = 0
-    rating: float = 0.0
-    rating_count: int = 0
-    sold_count: int = 0
+    favorite_count: Optional[int] = None
+    rating: Optional[float] = None
+    rating_count: Optional[int] = None
+    sold_count: Optional[int] = None
+    avatar_url: Optional[str] = None
     errors: int = 0
 
 
 class AIOEtsyStats:
     """Class to store and record stats for Etsy"""
-    def __init__(self, shop: str, default_reset_hour: int = 14,
+    def __init__(self, shop: str, default_reset_hour: int = 14, scrape_interval_minutes: int = 10,
                  aio_username: str = None, aio_password: str = None,
                  discord_webhook: str = None, discord_avatar_url: str = None):
         self.shop = shop
         self.scrape_url = f"https://www.etsy.com/shop/{shop}/sold"
         self.default_reset_hour = default_reset_hour
+        self.scrape_interval_minutes = scrape_interval_minutes
+
+        # Get the current stats just incase this hasn't been set up before or AIO is not used
+        stats = self.scrape_etsy_stats()
 
         # region Logging
+        logging.basicConfig()
         self.logger = logging.Logger(name=type(self).__name__)
 
         handler_stdout = logging.StreamHandler(sys.stdout)
@@ -49,22 +56,25 @@ class AIOEtsyStats:
             discord_handler = DiscordHandler(
                 service_name=type(self).__name__,
                 webhook_url=discord_webhook,
-                avatar_url=discord_avatar_url
+                avatar_url=stats.avatar_url or discord_avatar_url,
             )
             discord_handler.setFormatter(logging.Formatter("%(message)s"))
             discord_handler.setLevel(logging.INFO)
             self.logger.addHandler(discord_handler)
         # endregion
 
+        self.logger.debug(f"Initiating AIOEtsyStats for {self.shop}")
+
         # region Setup AIO
         if not all([aio_username, aio_password]):
             self.logger.warning("aio_username and/or aio_password were not provided")
         else:
-            self.logger.debug("Creating Feed Group and Feeds if missing")
+            self.logger.debug(f"Connecting to AIO as {aio_username}")
             # Create aio if username and password were supplied
             self._aio = Adafruit_IO.Client(aio_username, aio_password)
             existing_feed_group = None
             try:
+                self.logger.debug("Creating Feed Group and Feeds if missing")
                 existing_feed_group = self._aio.groups(self.shop.lower())
             except Exception as e:
                 pass
@@ -75,11 +85,11 @@ class AIOEtsyStats:
 
                 feeds = [
                     (Feed(name="Daily Order Count", key="daily-order-count"), "0"),
-                    (Feed(name="Favorite Count", key="favorite-count"), "0"),
-                    (Feed(name="Rating", key="rating"), "0.0"),
-                    (Feed(name="Rating Count", key="rating-count"), "0"),
-                    (Feed(name="Sold Count", key="sold-count"), "0"),
-                    (Feed(name="_Reset Hour", key="reset-hour"), "14"),
+                    (Feed(name="Favorite Count", key="favorite-count"), stats.favorite_count),
+                    (Feed(name="Rating", key="rating"), stats.rating),
+                    (Feed(name="Rating Count", key="rating-count"), stats.rating_count),
+                    (Feed(name="Sold Count", key="sold-count"), stats.sold_count),
+                    (Feed(name="_Reset Hour", key="reset-hour"), default_reset_hour),
                     (Feed(name="_Starting Stats", key="starting-stats"), {"first": "run"}),
                 ]
                 for feed, initial_value in feeds:
@@ -101,9 +111,6 @@ class AIOEtsyStats:
         self.logger.debug("Loading stats from AIO if they exist otherwise using current stats")
         self.update_total = 0  # Used to count the number of times parsing is performed
 
-        # Get the current stats just incase this hasn't been set up before or AIO is not used
-        stats = self.scrape_etsy_stats()
-
         self.favorite_count: int = stats.favorite_count
         self.rating: float = stats.rating
         self.rating_count: int = stats.rating_count
@@ -113,7 +120,7 @@ class AIOEtsyStats:
         self.daily_order_count: int = int(self._receive_aio(feed="daily-order-count",
                                                             default_value=0))
         self.reset_hour: int = int(self._receive_aio(feed="reset-hour",
-                                                     default_value=14))
+                                                     default_value=default_reset_hour))
 
         starting_stats = self._get_starting_stats()
 
@@ -136,7 +143,13 @@ class AIOEtsyStats:
         self.logger.debug("Testing connectivity to etsy.com. Only errors will be logged")
         _ = self._get_session_response(url="https://www.etsy.com/")
         # endregion
-        
+
+        atexit.register(self._atexit)
+
+    def _atexit(self):
+        """Log that the client is closing"""
+        self.logger.info("Script is stopping")
+
     def _get_starting_stats(self) -> dict:
         """Gets starting-stats feed and parses the json to dictionary"""
         starting_stats_response = self._receive_aio(feed="starting-stats")
@@ -166,6 +179,7 @@ class AIOEtsyStats:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
                       ",application/signed-exchange;v=b3;q=0.7",
             "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "en-US,en;q=0.9",
             "Cache-Control": "max-age=0",
         }
         session.mount("https://", HTTPAdapter(max_retries=3))  # Add adapter to do retries when failure
@@ -174,6 +188,14 @@ class AIOEtsyStats:
         response = None
         try:
             response = session.get(url=url)
+            if response.status_code == 403 or response.status_code == 429:
+                # Wait at 10 minutes before starting another scrape
+                self.logger.warning(f"Etsy returned status code {response.status_code}. "
+                                    f"Waiting 10 minutes before making another request")
+                schedule.clear()  # Clear schedule
+                sleep(secs=10*60)  # Wait 10 minutes
+                self._add_scheduled_job()  # Add the job back
+
             response.raise_for_status()
         except Exception as e:
             self.logger.warning(f"An error occurred trying to get {url}")
@@ -289,6 +311,7 @@ class AIOEtsyStats:
         rating = None
         rating_count = None
         sold_count = None
+        avatar_url = None
         errors = 0
 
         response = self._get_session_response(url=self.scrape_url)
@@ -346,8 +369,21 @@ class AIOEtsyStats:
             errors += 1
         # endregion
 
+        # region Avatar URL
+        try:
+            found_avatar_div = soup.find(name="div", attrs={"class": "condensed-header-shop-image"})
+            if found_avatar_div:
+                found_avatar_img = found_avatar_div.findChild("img")
+                if "src" in found_avatar_img.attrs:
+                    avatar_url = found_avatar_img.attrs["src"]
+                else:
+                    self.logger.debug("Unable to get Avatar URL")
+        except Exception as e:
+            errors += 1
+        # endregion
+
         return EtsyStoreStats(favorite_count=favorite_count, rating=rating, rating_count=rating_count, 
-                              sold_count=sold_count, errors=errors)
+                              sold_count=sold_count, avatar_url=avatar_url, errors=errors)
 
     def collect_and_publish(self) -> None:
         """Handles the main portion of this class and runs the helper functions in the main order"""
@@ -406,23 +442,28 @@ class AIOEtsyStats:
             self.sold_count = stats.sold_count
             self._send_aio(feed="sold-count", value=self.sold_count)
 
+    def _add_scheduled_job(self):
+        minutes = self.scrape_interval_minutes
+        schedule.every(minutes).to(minutes+1).minutes.do(self.collect_and_publish)
+
+    def main(self):
+        # Repeat to update the Etsy counts
+        self.logger.debug(f"Scrapes will be performed about every {self.scrape_interval_minutes} minute(s)")
+
+        self._add_scheduled_job()
+        while True:
+            schedule.run_pending()
+            # Sleep randomly to avoid scheduled scrapes that get banned
+            sleep((uniform(0.45, 0.99) * (self.scrape_interval_minutes * 15)))
+
 
 if __name__ == "__main__":
-    logging.basicConfig()
 
     client = AIOEtsyStats(shop=environ.get("ETSY_STORE_NAME"),
                           default_reset_hour=int(environ.get("DEFAULT_RESET_HOUR", 14)),
+                          scrape_interval_minutes=int(environ.get("SCRAPE_INTERVAL_MINUTES", 5)),
                           aio_username=environ.get("AIO_USERNAME"),
                           aio_password=environ.get("AIO_PASSWORD"),
                           discord_webhook=environ.get("DISCORD_WEBHOOK"),
                           discord_avatar_url=environ.get("DISCORD_AVATAR_URL"))
-
-    # Repeat to update the Etsy counts
-    scrape_interval_minutes = int(environ.get("SCRAPE_INTERVAL_MINUTES", 5))
-    client.logger.debug(f"Scrapes will be performed about every {scrape_interval_minutes} minute(s)")
-
-    schedule.every(scrape_interval_minutes).minutes.do(client.collect_and_publish)
-    while True:
-        schedule.run_pending()
-        # Sleep randomly to avoid scheduled scrapes that get banned
-        sleep((uniform(0.45, 0.99)*(scrape_interval_minutes*15)))
+    client.main()
