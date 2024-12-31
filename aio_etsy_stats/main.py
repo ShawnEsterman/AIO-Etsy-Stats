@@ -148,7 +148,7 @@ class AIOEtsyStats:
 
     def _atexit(self):
         """Log that the client is closing"""
-        self.logger.info("Script is stopping")
+        self.logger.info("f{type(self).__name__} for {self.shop} is exiting")
 
     def _get_starting_stats(self) -> dict:
         """Gets starting-stats feed and parses the json to dictionary"""
@@ -204,7 +204,6 @@ class AIOEtsyStats:
             del session
             
         return response
-        
 
     def _validate_reset_hour(self):
         """
@@ -409,12 +408,13 @@ class AIOEtsyStats:
             self.logger.info(f"Reset time of {self.reset_datetime} has been passed")
             self._reset_counts(stats=stats)
 
-        if self.favorite_count != stats.favorite_count:
+        # region Process Stats
+        if all([isinstance(stats.favorite_count, int), self.favorite_count != stats.favorite_count]):
             self.logger.info(f"The {self.shop} Favorite Count changed {self.favorite_count} -> {stats.favorite_count}")
             self.favorite_count = stats.favorite_count
             self._send_aio(feed="favorite-count", value=self.favorite_count)
 
-        if self.rating != stats.rating:
+        if all([isinstance(stats.rating, float), self.rating != stats.rating]):
             rating_change = round((stats.rating - self.rating), 4)
             message = f"The {self.shop} Rating changed from {self.rating} -> {stats.rating}"
             if rating_change > 0:
@@ -424,13 +424,13 @@ class AIOEtsyStats:
                 self.logger.warning(message)
             self.rating = stats.rating
             self._send_aio(feed="rating", value=self.rating)
-        
-        if self.rating_count != stats.rating_count:
+
+        if all([isinstance(stats.rating_count, int), self.rating_count != stats.rating_count]):
             self.logger.info(f"The {self.shop} Rating Count changed {self.rating_count} -> {stats.rating_count}")
             self.rating_count = stats.rating_count
             self._send_aio(feed="rating-count", value=self.rating_count)
 
-        if self.sold_count != stats.sold_count:
+        if all([isinstance(stats.sold_count, int), self.sold_count != stats.sold_count]):
             self.logger.info(f"The {self.shop} Sold Count changed {self.sold_count} -> {stats.sold_count}")
             # If an item was sold, increase the order_count
             if self.sold_count > stats.sold_count:
@@ -441,6 +441,7 @@ class AIOEtsyStats:
                 self._send_aio(feed="daily-order-count", value=self.daily_order_count)
             self.sold_count = stats.sold_count
             self._send_aio(feed="sold-count", value=self.sold_count)
+        # endregion
 
     def _add_scheduled_job(self):
         minutes = self.scrape_interval_minutes
