@@ -1,7 +1,7 @@
 # AIO Etsy Stats
 
 Python script to scrape an Etsy store page and publish stats to Adafruit IO. It will also keep track of stats from the start of the day so you
-can use the metrics to easily see how many sales in a day. 
+can use the metrics to easily see how many orders, sold items, favorites gained, or track your rating. 
 
 > [!IMPORTANT]
 > This python repository is a part of a late Christmas gift and now birthday present to my wife, Nicole, who started her Etsy store in 2024. I hope that she loves it! ❤️
@@ -10,10 +10,10 @@ can use the metrics to easily see how many sales in a day.
 
 — Nicole, the inspiration
 
-Her store picked up traction this summer and she has been excited in seeing how many Etsy she makes sales in a day. She is usually happy to get 
-6-8 sales in a day. While she was away on a work trip I was on order filling duty and she would text me "Cha Ching" when she got a sale that I 
+Her store picked up traction this summer and she has been excited seeing how many Etsy she makes orders in a day. She is usually happy to get 
+6-8 orders in a day. While she was away on a work trip I was on order filling duty and she would text me "Cha Ching" when she got a order that I 
 needed to pack. I thought it was cute that she said "Cha Ching"[^1] and those 8 characters made me think... It would be cool if I could illuminate 
-1 of each of those letters for each sale she got in a day. Since 8 would be a good day.
+1 of each of those letters for each order she got in a day. Since 8 would be a good day.
 
 I intend to run this project in a [docker container](docker-compose.yml) and have it update AIO every 15 minutes. In two separate efforts I plan to 
 create an Neon-like LED display sign that I designed in Autodesk Fusion and run by a Pimoroni Plasma 2350 W microcontroller running CircuitPython. 
