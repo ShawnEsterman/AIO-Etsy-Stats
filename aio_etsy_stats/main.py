@@ -10,29 +10,35 @@ from time import sleep
 from typing import NamedTuple
 
 import Adafruit_IO
+import requests
 import schedule
 from Adafruit_IO.model import Group, Feed
 from bs4 import BeautifulSoup
+from discord_logging.handler import DiscordHandler
 from requests import Session
 from requests.adapters import HTTPAdapter
-from discord_logging.handler import DiscordHandler
 
 
-class EtsyStats(NamedTuple):
+class EtsyStoreStats(NamedTuple):
     """Used to format stats from Etsy store"""
-    favorites: int = 0
+    favorite_count: int = 0
     rating: float = 0.0
-    ratings: int = 0
-    sales: int = 0
+    rating_count: int = 0
+    sold_count: int = 0
     errors: int = 0
 
 
-class EstyStoreStats:
+class AIOEtsyStats:
     """Class to store and record stats for Etsy"""
-    def __init__(self, shop: str, aio_username: str = None, aio_password: str = None,
+    def __init__(self, shop: str, default_reset_hour: int = 14,
+                 aio_username: str = None, aio_password: str = None,
                  discord_webhook: str = None, discord_avatar_url: str = None):
         self.shop = shop
-        self.url = f"https://www.etsy.com/shop/{shop}/sold"
+        self.scrape_url = f"https://www.etsy.com/shop/{shop}/sold"
+        self.default_reset_hour = default_reset_hour
+
+        # region Logging
+        self.logger = logging.Logger(name=type(self).__name__)
 
         handler_stdout = logging.StreamHandler(sys.stdout)
         handler_stdout.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
@@ -60,81 +66,91 @@ class EstyStoreStats:
             existing_feed_group = None
             try:
                 existing_feed_group = self._aio.groups(self.shop.lower())
-                self.logger.info(f"Connected to Adafruit IO for {aio_username}")
             except Exception as e:
-                self.logger.warning(f"Feed Group \"{self.shop}\" does not exist")
+                pass
             finally:
                 if not existing_feed_group:
-                    self.logger.warning(f"Feed Group \"{self.shop}\" creating")
+                    self.logger.debug(f"Creating Feed Group \"{self.shop}\"")
                     self._aio.create_group(group=Group(name=self.shop, key=self.shop.lower()))
 
                 feeds = [
-                    (Feed(name="_Reset Info", key="reset-info"), {"data": 0}),
-                    (Feed(name="_Reset Hour", key="reset-hour"), 22),
-                    (Feed(name="_Update Count", key="update-total"), 0),
-                    (Feed(name="_Error Count", key="error-count"), 0),
-                    (Feed(name="Favorite Change", key="favorites-change"), None),
-                    (Feed(name="Rating Change", key="rating-change"), None),
-                    (Feed(name="Ratings Change", key="ratings-change"), None),
-                    (Feed(name="Sales Change", key="sales-change"), None),
+                    (Feed(name="Daily Order Count", key="daily-order-count"), "0"),
+                    (Feed(name="Favorite Count", key="favorite-count"), "0"),
+                    (Feed(name="Rating", key="rating"), "0.0"),
+                    (Feed(name="Rating Count", key="rating-count"), "0"),
+                    (Feed(name="Sold Count", key="sold-count"), "0"),
+                    (Feed(name="_Reset Hour", key="reset-hour"), "14"),
+                    (Feed(name="_Starting Stats", key="starting-stats"), {"first": "run"}),
                 ]
                 for feed, initial_value in feeds:
                     existing_feed = None
                     try:
-                        existing_feed = self._aio.feeds(self.get_feed_name(feed.key))
+                        existing_feed = self._aio.feeds(self._get_feed_name(feed.key))
                     except Exception as e:
-                        self.logger.warning(f"Feed \"{feed.name}\" does not exist")
+                        pass  # No logging
                     finally:
                         if not existing_feed:
-                            self.logger.info(f"Feed \"{feed.name}\" creating")
+                            self.logger.debug(f"Creating feed \"{feed.name}\"")
                             self._aio.create_feed(feed=feed, group_key=self.shop.lower())
 
                             if initial_value:
-                                self.send_aio(feed=self.get_feed_name(feed.key), value=initial_value)
+                                self._send_aio(feed=feed.key, value=initial_value)
         # endregion
 
-        # region Set default variables
-        # The received_aio command will return None if aio isn't setup or the default value if you provide it
-        self.reset_hour: int = int(self.receive_aio(feed=self.get_feed_name("reset-hour"), default_value=22))
-        self.update_total: int = int(self.receive_aio(feed=self.get_feed_name("update-total"), default_value=0))
-        self.favorites_change: int = int(self.receive_aio(feed=self.get_feed_name("favorites-change"),
-                                                          default_value=0))
-        self.rating_change: float = float(self.receive_aio(feed=self.get_feed_name("rating-change"), default_value=0.0))
-        self.ratings_change: int = int(self.receive_aio(feed=self.get_feed_name("ratings-change"), default_value=0))
-        self.sales_change: int = int(self.receive_aio(feed=self.get_feed_name("sales-change"), default_value=0))
+        # region Set class variables to track stats
+        self.logger.debug("Loading stats from AIO if they exist otherwise using current stats")
+        self.update_total = 0  # Used to count the number of times parsing is performed
 
-        if self._aio:
-            reset_info_response = self.receive_aio(feed=self.get_feed_name("reset-info"))
-            reset_info_response = reset_info_response.replace("\'", "\"")
-            reset_info = json.loads(reset_info_response)
-            self.favorites_start: int = int(reset_info.get("favorites-start", 0))
-            self.rating_start: float = float(reset_info.get("rating-start", 0.0))
-            self.ratings_start: int = int(reset_info.get("ratings-start", 0))
-            self.sales_start: int = int(reset_info.get("sales-start", 0))
-            self.reset_datetime: datetime = datetime.fromtimestamp(float(reset_info.get("reset-timestamp", datetime.now().timestamp())))
+        # Get the current stats just incase this hasn't been set up before or AIO is not used
+        stats = self.scrape_etsy_stats()
+
+        self.favorite_count: int = stats.favorite_count
+        self.rating: float = stats.rating
+        self.rating_count: int = stats.rating_count
+        self.sold_count: int = stats.sold_count
+        # The received_aio command will return default_value if the feed doesn't have a value (i.e. this is the first
+        # run. So we can get the stats and use them as the default_value
+        self.daily_order_count: int = int(self._receive_aio(feed="daily-order-count",
+                                                            default_value=0))
+        self.reset_hour: int = int(self._receive_aio(feed="reset-hour",
+                                                     default_value=14))
+
+        starting_stats = self._get_starting_stats()
+
+        # This can't be obtained from parsing, so if it doesn't exist in AIO default to 0 😓
+        self.starting_order_count: int = int(starting_stats.get("starting-order-count", 0))
+        # The rest might be in starting stats. If not, start at what is current
+        self.starting_favorite_count: int = int(starting_stats.get("starting-favorite-count", stats.favorite_count))
+        self.starting_rating: float = float(starting_stats.get("starting-rating", stats.rating))
+        self.starting_rating_count: int = int(starting_stats.get("starting-rating-count", stats.rating_count))
+        self.starting_sold_count: int = int(starting_stats.get("stating-sold-count", stats.sold_count))
+
+        # Load reset timestamp if it was found
+        reset_timestamp = starting_stats.get("reset-timestamp")
+        if reset_timestamp:
+            self.reset_datetime: datetime = datetime.fromtimestamp(float(reset_timestamp))
         else:
-            self.favorites_start: int = 0
-            self.rating_start: float = 0.0
-            self.ratings_start: int = 0
-            self.sales_start: int = 0
             self.reset_datetime: datetime = datetime.now()
+        self._validate_reset_hour()
         # endregion
 
-        # Load any existing information at startup
-        self.validate_reset_hour()
-        self.update_total = int(self.receive_aio(feed=self.get_feed_name("update-total"), default_value=0))
-        # Get Etsy.com to make sure its working and you establish cookies
-        session = self.get_session()
-        _ = session.get("https://www.etsy.com/")
-        del session
-        # Collect stats at first run
-        self.collect_and_publish()
+        # region Test connectivity
+        self.logger.debug("Testing connectivity to etsy.com. Only errors will be logged")
+        _ = self._get_session_response(url="https://www.etsy.com/")
+        # endregion
+        
+    def _get_starting_stats(self) -> dict:
+        """Gets starting-stats feed and parses the json to dictionary"""
+        starting_stats_response = self._receive_aio(feed="starting-stats")
+        starting_stats_response = starting_stats_response.replace("\'", "\"")
+        return json.loads(starting_stats_response)
 
-    def get_session(self) -> Session:
+    def _get_session_response(self, url: str) -> requests.Response:
         """
-        Returns a session object to use to query things
+        Creates a temporary session with headers built for scraping. Then gets the URL you would like
         :return:
         """
+        # region Create Session
         session = Session()
 
         # Randomize the referer each time
@@ -145,6 +161,7 @@ class EstyStoreStats:
             f"https://www.etsy.com/shop/{self.shop}?ref=sim_anchor",
         ])
 
+        # Recommend headers for scraping
         session.headers = {
             "User-Agent": "XYZ/3.0",
             "Referer": referer,
@@ -153,22 +170,36 @@ class EstyStoreStats:
             "Accept-Encoding": "gzip, deflate, br, zstd",
             "Cache-Control": "max-age=0",
         }
-        session.mount("https://", HTTPAdapter(max_retries=3))
-        return session
+        session.mount("https://", HTTPAdapter(max_retries=3))  # Add adapter to do retries when failure
+        # endregion
+        
+        response = None
+        try:
+            response = session.get(url=url)
+            response.raise_for_status()
+        except Exception as e:
+            self.logger.warning(f"An error occurred trying to get {url}")
+            self.logger.exception(e)
+        finally:
+            del session
+            
+        return response
+        
 
-    def validate_reset_hour(self):
+    def _validate_reset_hour(self):
         """
         Since reset hour can change, let's make a function we can call to check it and update the
         class
         :return:
         """
-        reset_hour_response = self.receive_aio(feed=self.get_feed_name("reset-hour"))
-        if reset_hour_response:
-            reset_hour_aio_value = int(reset_hour_response)
+        # Prioritize AIO, but use the environment variable if not available
+        desired_reset_hour = int(self._receive_aio(feed="reset-hour", default_value=self.default_reset_hour,
+                                                    silent=True))
+        if desired_reset_hour:
             # If the server shows the reset_hour different, update it
-            if self.reset_hour != reset_hour_aio_value:
-                self.logger.info(f"Changing reset hour from {self.reset_hour} to {reset_hour_aio_value}")
-                self.reset_hour = reset_hour_aio_value
+            if self.reset_hour != desired_reset_hour:
+                self.logger.info(f"Changing reset hour from {self.reset_hour} to {desired_reset_hour}")
+                self.reset_hour = desired_reset_hour
 
         # If the reset hour isn't correct for the existing datetime, update it
         if any([self.reset_datetime.hour != self.reset_hour, self.reset_datetime.minute != 0]):
@@ -176,24 +207,17 @@ class EstyStoreStats:
             new_reset_datetime = new_reset_datetime.replace(hour=self.reset_hour, minute=0)
             self.logger.info(f"Changing reset time from {self.reset_datetime} to {new_reset_datetime}")
             self.reset_datetime = new_reset_datetime
-            self.send_reset_info()
+            self._send_starting_stats()
 
-    def get_feed_name(self, feed: str):
-        """
-        Adds the feed group prefix, so you don't have to add it every time
-        :param feed:
-        :return:
-        """
+    def _get_feed_name(self, feed: str):
+        """Adds the feed group prefix, so you don't have to add it every time"""
         return f"{self.shop.lower()}.{feed}"
 
-    def send_aio(self, feed: str, value):
-        """
-        Helper function to send values to aio and parse for errors
-        :param feed: Name of feed
-        :param value: Value to send
-        :return:
-        """
+    def _send_aio(self, feed: str, value):
+        """Helper function to send values to AIO and parse for errors"""
         if self._aio:
+            feed = self._get_feed_name(feed=feed)
+            
             try:
                 self.logger.debug(f"Updating AIO feed {feed} to {value}")
                 if isinstance(value, dict):
@@ -203,100 +227,94 @@ class EstyStoreStats:
                 self.logger.warning(f"An error occurred updating AIO feed {feed} to {value}")
                 self.logger.exception(e)
 
-    def receive_aio(self, feed: str, default_value=None):
-        """
-        Helper method to get values from aio
-        :param feed: Name of feed
-        :param default_value: Default value to return if nothing
-        :return:
-        """
+    def _receive_aio(self, feed: str, default_value: object = None, silent: bool = False):
+        """Helper method to get values from aio"""
         return_val = default_value
         if self._aio:
+            feed = self._get_feed_name(feed=feed)
+            
             try:
-                self.logger.debug(f"Getting AIO feed {feed} value")
                 response = self._aio.receive(feed=feed)
-                self.logger.debug(f"AIO Feed {feed} has a value of {response.value}")
+                if not silent:
+                    self.logger.debug(f"AIO Feed {feed} has a value of {response.value}")
                 return response.value
             except Exception as e:
                 self.logger.warning(f"An error occurred getting AIO feed {feed} value")
                 self.logger.exception(e)
         return return_val
 
-    def reset_counts(self, stats: EtsyStats) -> None:
+    def _reset_counts(self, stats: EtsyStoreStats) -> None:
         """
         Reset stats and counters to 0
 
         :param stats: copy of Etsy stats to reset process
         :return:
         """
-        # We need to reset the change values to 0 and publish
-        self.favorites_change = 0
-        self.rating_change = 0.0
-        self.ratings_change = 0
-        self.sales_change = 0
-        self.send_aio(feed=self.get_feed_name("favorites-change"), value=self.favorites_change)
-        self.send_aio(feed=self.get_feed_name("rating-change"), value=self.rating_change)
-        self.send_aio(feed=self.get_feed_name("ratings-change"), value=self.ratings_change)
-        self.send_aio(feed=self.get_feed_name("sales-change"), value=self.sales_change)
+        # Update all things to be equal to current stats
+        self.starting_order_count = self.daily_order_count = 0
+        self.starting_favorite_count = self.favorite_count = stats.favorite_count
+        self.starting_rating = self.rating = stats.rating
+        self.starting_rating_count = self.rating_count = stats.rating_count
+        self.starting_sold_count = self.sold_count = stats.sold_count
+
+        updates = [
+            ("daily-order-count", self.daily_order_count),
+            ("favorite-count", self.favorite_count),
+            ("rating", self.rating),
+            ("rating-count", self.rating_count),
+            ("sold-count", self.sold_count),
+        ]
+        for feed, value in updates:
+            self._send_aio(feed=feed, value=value)
 
         # We need to get a new reset date and set the values for the starting values
         self.reset_datetime = datetime.combine(date.today(), time(hour=self.reset_hour))
         if self.reset_datetime < datetime.now():
             # Just incase you start this app after the current day's reset timer hit
             self.reset_datetime = self.reset_datetime + timedelta(days=1)
-        self.logger.info(f"Counts are reset to 0. Next reset will occur at {self.reset_datetime}")
-        self.favorites_start = stats.favorites
-        self.rating_start = stats.rating
-        self.ratings_start = stats.ratings
-        self.sales_start = stats.sales
-        self.send_reset_info()  # Send it when it is updated on the class instance
+        self.logger.info(f"Starting counts are reset to current stats. Next reset will occur at {self.reset_datetime}")
+        self._send_starting_stats()  # Send it when it is updated on the class instance
 
-    def send_reset_info(self) -> None:
+    def _send_starting_stats(self) -> None:
         """Sends reset info as dict/json. This is loaded if the script restarts so things aren't 0 if between resets"""
-        self.send_aio(feed=self.get_feed_name("reset-info"), value={
-            "favorites-start": self.favorites_start,
-            "rating-start": self.rating_start,
-            "ratings-start": self.ratings_start,
-            "sales-start": self.sales_start,
+        self._send_aio(feed="starting-stats", value={
+            "starting-order-count": self.starting_order_count,
+            "starting-favorite-count": self.starting_favorite_count,
+            "starting-rating": self.starting_rating,
+            "starting-rating-count": self.starting_rating_count,
+            "starting-sold-count": self.starting_sold_count,
             "reset-timestamp": self.reset_datetime.timestamp()
         })
 
-    def scrape_etsy_stats(self) -> EtsyStats:
+    def scrape_etsy_stats(self) -> EtsyStoreStats:
         """Used to scrape the Etsy store page. Will need to be modified if they change the way the site layout is"""
-        self.logger.debug(f"Scraping {self.url}")
-
-        favorites = None
+        favorite_count = None
         rating = None
-        ratings = None
-        sales = None
+        rating_count = None
+        sold_count = None
         errors = 0
 
-        try:
-            session = self.get_session()
-            response = session.get(url=self.url)
-            response.raise_for_status()
-            del session
-        except Exception as e:
-            self.logger.warning(f"Could not get url: {self.url}")
-            self.logger.exception(e)
-            return EtsyStats(errors=1)
+        response = self._get_session_response(url=self.scrape_url)
+        if not response or not hasattr(response, "text"):
+            self.logger.error(f"Response from {self.scrape_url} did not contain text element to parse")
+            return EtsyStoreStats(errors=1)
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # region favorites
+        # region Favorite Count
         try:
             scripts = soup.find_all(name="script")
             for script in scripts:
                 match = re.search(r".*\"num_favorers\":(\d+),.*", script.get_text().strip())
                 if match:
-                    favorites = int(match[1])
+                    favorite_count = int(match[1])
         except Exception as e:
-            self.logger.warning("Error occurred parsing for Favorites")
+            self.logger.warning("Error occurred parsing for Favorite Count")
             self.logger.exception(e)
             errors += 1
         # endregion
 
-        # region rating
+        # region Rating
         found_rating = None
         try:
             found_rating = soup.find(name="input", attrs={"name": "rating"})
@@ -308,105 +326,108 @@ class EstyStoreStats:
             errors += 1
         # endregion
 
-        # region ratings
+        # region Rating Count
         if found_rating:
             try:
                 found_ratings = found_rating.parent.parent.find(string=re.compile(r"\(\d+\)"))
                 if found_ratings:
-                    ratings = int(found_ratings.strip().replace("(", "").replace(")", ""))
+                    rating_count = int(found_ratings.strip().replace("(", "").replace(")", ""))
             except Exception as e:
-                self.logger.warning("Error occurred parsing for Ratings")
+                self.logger.warning("Error occurred parsing for Rating Count")
                 self.logger.exception(e)
                 errors += 1
         # endregion
 
-        # region sales
+        # region Sold Count
         try:
             found_sales = soup.find(string=re.compile("([0-9,]) Sales"))
             if found_sales:
-                sales = int(found_sales.get_text().strip().replace(" Sales", "").replace(",", ""))
+                sold_count = int(found_sales.get_text().strip().replace(" Sales", "").replace(",", ""))
         except Exception as e:
-            self.logger.warning("Error occurred parsing for Sales")
+            self.logger.warning("Error occurred parsing for Sold Count")
             self.logger.exception(e)
             errors += 1
         # endregion
 
-        return EtsyStats(favorites=favorites, rating=rating, ratings=ratings, sales=sales, errors=errors)
+        return EtsyStoreStats(favorite_count=favorite_count, rating=rating, rating_count=rating_count, 
+                              sold_count=sold_count, errors=errors)
 
     def collect_and_publish(self) -> None:
         """Handles the main portion of this class and runs the helper functions in the main order"""
         self.update_total += 1
-        self.logger.info(f"Checking {self.shop} for updates. Count: {self.update_total}")
-        self.send_aio(feed=self.get_feed_name("update-total"), value=self.update_total)
+        self.logger.debug(f"Checking {self.shop} for updates. Count: {self.update_total}")
 
         # Every time you run, check the reset hour to see if it changed
-        self.validate_reset_hour()
+        self._validate_reset_hour()
 
         # Get Etsy stats
         stats = self.scrape_etsy_stats()
         if stats.errors > 0:
-            self.send_aio(feed=self.get_feed_name("error-count"), value=stats.errors)
-        if (self.update_total % 10) == 0:
-            self.logger.info("Logging current stats")
-            self.logger.info(str(dict([
-                ("favorites", stats.favorites), ("favorites-start", self.favorites_start),
-                ("rating", stats.rating), ("rating-start", self.rating_start),
-                ("ratings", stats.ratings), ("ratings-start", self.ratings_start),
-                ("sales", stats.sales), ("sales-start", self.sales_start),
+            self._send_aio(feed="error-count", value=stats.errors)
+        if (self.update_total % 30) == 0:
+            self.logger.debug("Logging current stats")
+            self.logger.debug(str(dict([
+                ("favorite-count", stats.favorite_count), ("starting-favorite-count", self.starting_favorite_count),
+                ("rating", stats.rating), ("starting-rating", self.starting_rating),
+                ("rating-count", stats.rating_count), ("starting-rating-count", self.starting_rating_count),
+                ("sold-count", stats.sold_count), ("starting-sold-count", self.starting_sold_count),
             ])))
 
         # If we passed reset_datetime, process the reset using the current stats
         if datetime.now() > self.reset_datetime:
             self.logger.info(f"Reset time of {self.reset_datetime} has been passed")
-            self.reset_counts(stats=stats)
+            self._reset_counts(stats=stats)
 
-        if stats.favorites:
-            favorites_change = stats.favorites - self.favorites_start
-            if favorites_change != self.favorites_change:
-                self.logger.info(f"The favorite count changed {self.favorites_start} -> "
-                                 f"{self.favorites_start + favorites_change}")
-                self.favorites_change = favorites_change
-                self.send_aio(feed=self.get_feed_name("favorites-change"), value=self.favorites_change)
+        if self.favorite_count != stats.favorite_count:
+            self.logger.info(f"The {self.shop} Favorite Count changed {self.favorite_count} -> {stats.favorite_count}")
+            self.favorite_count = stats.favorite_count
+            self._send_aio(feed="favorite-count", value=self.favorite_count)
 
-        if stats.rating:
-            rating_change = round((stats.rating - self.rating_start), 4)
-            if rating_change != self.rating_change:
-                message = f"The rating changed from {self.rating_start} to " \
-                          f"{self.rating_start + rating_change}"
-                if rating_change > 0:
-                    self.logger.info(message)
-                else:
-                    # Give warning if the rating goes down
-                    self.logger.warning(message)
-                self.rating_change = rating_change
-                self.send_aio(feed=self.get_feed_name("rating-change"), value=self.rating_change)
+        if self.rating != stats.rating:
+            rating_change = round((stats.rating - self.rating), 4)
+            message = f"The {self.shop} Rating changed from {self.rating} -> {stats.rating}"
+            if rating_change > 0:
+                self.logger.info(message)
+            else:
+                # Give warning if the rating goes down
+                self.logger.warning(message)
+            self.rating = stats.rating
+            self._send_aio(feed="rating", value=self.rating)
+        
+        if self.rating_count != stats.rating_count:
+            self.logger.info(f"The {self.shop} Rating Count changed {self.rating_count} -> {stats.rating_count}")
+            self.rating_count = stats.rating_count
+            self._send_aio(feed="rating-count", value=self.rating_count)
 
-        if stats.ratings:
-            ratings_change = stats.ratings - self.ratings_start
-            if ratings_change != self.ratings_change:
-                self.logger.info(f"The rating count changed {self.ratings_start} -> "
-                                 f"{self.ratings_start + ratings_change}")
-                self.ratings_change = ratings_change
-                self.send_aio(feed=self.get_feed_name("ratings-change"), value=self.ratings_change)
-
-        if stats.sales:
-            sales_change = stats.sales - self.sales_start
-            if sales_change != self.sales_change:
-                self.logger.info(f"The sales count changed {self.sales_start} -> {self.sales_start + sales_change}")
-                self.sales_change = sales_change
-                self.send_aio(feed=self.get_feed_name("sales-change"), value=self.sales_change)
+        if self.sold_count != stats.sold_count:
+            self.logger.info(f"The {self.shop} Sold Count changed {self.sold_count} -> {stats.sold_count}")
+            # If an item was sold, increase the order_count
+            if self.sold_count > stats.sold_count:
+                self.logger.info(
+                    f"Since {self.shop} Sold Count increased, it will be considered an order. Daily Order Count "
+                    f"increased from {self.daily_order_count} -> {self.daily_order_count + 1}")
+                self.daily_order_count += 1
+                self._send_aio(feed="daily-order-count", value=self.daily_order_count)
+            self.sold_count = stats.sold_count
+            self._send_aio(feed="sold-count", value=self.sold_count)
 
 
 if __name__ == "__main__":
     logging.basicConfig()
 
-    client = EstyStoreStats(shop=environ.get("ETSY_STORE_NAME"),
-                            aio_username=environ.get("AIO_USERNAME"),
-                            aio_password=environ.get("AIO_PASSWORD"))
+    client = AIOEtsyStats(shop=environ.get("ETSY_STORE_NAME"),
+                          default_reset_hour=int(environ.get("DEFAULT_RESET_HOUR")),
+                          aio_username=environ.get("AIO_USERNAME"),
+                          aio_password=environ.get("AIO_PASSWORD"),
+                          discord_webhook=environ.get("DISCORD_WEBHOOK"),
+                          discord_avatar_url=environ.get("DISCORD_AVATAR_URL"))
 
     # Repeat to update the Etsy counts
-    schedule.every(15).minutes.do(client.collect_and_publish)
+    scrape_interval_minutes = int(environ.get("SCRAPE_INTERVAL_MINUTES", 5))
+    client.logger.debug(f"Scrapes will be performed about every {scrape_interval_minutes} minute(s)")
+
+    schedule.every(scrape_interval_minutes).minutes.do(client.collect_and_publish)
     while True:
         schedule.run_pending()
-        # Sleep randomly for nearly 2 minutes
-        sleep((uniform(0.45, 0.99)*120))
+        # Sleep randomly to avoid scheduled scrapes that get banned
+        sleep((uniform(0.45, 0.99)*(scrape_interval_minutes*60/2)))
