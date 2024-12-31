@@ -15,6 +15,7 @@ from Adafruit_IO.model import Group, Feed
 from bs4 import BeautifulSoup
 from requests import Session
 from requests.adapters import HTTPAdapter
+from discord_logging.handler import DiscordHandler
 
 
 class EtsyStats(NamedTuple):
@@ -28,21 +29,32 @@ class EtsyStats(NamedTuple):
 
 class EstyStoreStats:
     """Class to store and record stats for Etsy"""
-    def __init__(self, shop: str, aio_username: str = None,
-                 aio_password: str = None):
-        # Shop info
+    def __init__(self, shop: str, aio_username: str = None, aio_password: str = None,
+                 discord_webhook: str = None, discord_avatar_url: str = None):
         self.shop = shop
         self.url = f"https://www.etsy.com/shop/{shop}/sold"
 
-        # Logger
-        self.logger = logging.Logger(name=__name__)
-        self.logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-        self.logger.addHandler(handler)
+        handler_stdout = logging.StreamHandler(sys.stdout)
+        handler_stdout.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        handler_stdout.setLevel(logging.DEBUG)
+        self.logger.addHandler(handler_stdout)
 
-        # region setup AIO
-        if all([aio_username, aio_password]):
+        if discord_webhook:
+            discord_handler = DiscordHandler(
+                service_name=type(self).__name__,
+                webhook_url=discord_webhook,
+                avatar_url=discord_avatar_url
+            )
+            discord_handler.setFormatter(logging.Formatter("%(message)s"))
+            discord_handler.setLevel(logging.INFO)
+            self.logger.addHandler(discord_handler)
+        # endregion
+
+        # region Setup AIO
+        if not all([aio_username, aio_password]):
+            self.logger.warning("aio_username and/or aio_password were not provided")
+        else:
+            self.logger.debug("Creating Feed Group and Feeds if missing")
             # Create aio if username and password were supplied
             self._aio = Adafruit_IO.Client(aio_username, aio_password)
             existing_feed_group = None

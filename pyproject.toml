@@ -5,7 +5,8 @@ dependencies = [
     "adafruit-io==2.8.0",
     "beautifulsoup4==4.12.3",
     "requests==2.32.3",
-    "schedule==1.2.2"
+    "schedule==1.2.2",
+    "python-logging-discord-handler==0.1.4"
 ]
 requires-python = ">=3.8"
 authors = [
