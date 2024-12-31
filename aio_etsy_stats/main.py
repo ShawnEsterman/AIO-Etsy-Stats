@@ -63,7 +63,7 @@ class AIOEtsyStats:
             self.logger.addHandler(discord_handler)
         # endregion
 
-        self.logger.debug(f"Initiating AIOEtsyStats for {self.shop}")
+        self.logger.info(f"Initiating AIOEtsyStats for {self.shop}")
 
         # region Setup AIO
         if not all([aio_username, aio_password]):
