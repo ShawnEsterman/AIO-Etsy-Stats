@@ -3,12 +3,13 @@
 Python script to scrape an Etsy store page and publish stats to Adafruit IO. It will also keep track of stats from the start of the day so you
 can use the metrics to easily see how many orders, sold items, favorites gained, or track your rating. 
 
-> [!IMPORTANT]
-> This python repository is a part of a late Christmas gift and now birthday present to my wife, Nicole, who started her Etsy store in 2024. I hope that she loves it! ❤️
-
+---
 > Cha Ching
 
 — Nicole, the inspiration
+
+> [!IMPORTANT]
+> This python repository is a part of a late Christmas gift and now birthday present to my wife, Nicole, who started her Etsy store in 2024. I hope that she loves it! ❤️
 
 Her store picked up traction this summer and she has been excited seeing how many Etsy she makes orders in a day. She is usually happy to get 
 6-8 orders in a day. While she was away on a work trip I was on order filling duty and she would text me "Cha Ching" when she got a order that I 
