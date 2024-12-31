@@ -359,8 +359,6 @@ class AIOEtsyStats:
 
         # Get Etsy stats
         stats = self.scrape_etsy_stats()
-        if stats.errors > 0:
-            self._send_aio(feed="error-count", value=stats.errors)
         if (self.update_total % 30) == 0:
             self.logger.debug("Logging current stats")
             self.logger.debug(str(dict([
@@ -427,4 +425,4 @@ if __name__ == "__main__":
     while True:
         schedule.run_pending()
         # Sleep randomly to avoid scheduled scrapes that get banned
-        sleep((uniform(0.45, 0.99)*(scrape_interval_minutes*60/2)))
+        sleep((uniform(0.45, 0.99)*(scrape_interval_minutes*15)))
