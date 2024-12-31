@@ -128,7 +128,7 @@ class AIOEtsyStats:
         self.starting_favorite_count: int = int(starting_stats.get("starting-favorite-count", stats.favorite_count))
         self.starting_rating: float = float(starting_stats.get("starting-rating", stats.rating))
         self.starting_rating_count: int = int(starting_stats.get("starting-rating-count", stats.rating_count))
-        self.starting_sold_count: int = int(starting_stats.get("stating-sold-count", stats.sold_count))
+        self.starting_sold_count: int = int(starting_stats.get("starting-sold-count", stats.sold_count))
 
         # Load reset timestamp if it was found
         reset_timestamp = starting_stats.get("reset-timestamp")
