@@ -150,7 +150,7 @@ class AIOEtsyStats:
 
     def _atexit(self):
         """Log that the client is closing"""
-        self.logger.info("f{type(self).__name__} for {self.shop} is exiting")
+        self.logger.info(f"{type(self).__name__} for {self.shop} is exiting")
 
     def _get_starting_stats(self) -> dict:
         """Gets starting-stats feed and parses the json to dictionary"""
@@ -159,10 +159,7 @@ class AIOEtsyStats:
         return json.loads(starting_stats_response)
 
     def _get_session_response(self, url: str) -> requests.Response:
-        """
-        Creates a temporary session with headers built for scraping. Then gets the URL you would like
-        :return:
-        """
+        """Creates a temporary session with headers built for scraping. Then gets the URL you would like"""
         # region Create Session
         session = Session()
 
@@ -208,11 +205,7 @@ class AIOEtsyStats:
         return response
 
     def _validate_reset_hour(self):
-        """
-        Since reset hour can change, let's make a function we can call to check it and update the
-        class
-        :return:
-        """
+        """Used to validate that the reset hour is set correctly in the event it is changed on AIO"""
         # Prioritize AIO, but use the environment variable if not available
         desired_reset_hour = int(self._receive_aio(feed="reset-hour", default_value=self.default_reset_hour,
                                                     silent=True))
@@ -265,12 +258,7 @@ class AIOEtsyStats:
         return return_val
 
     def _reset_counts(self, stats: EtsyStoreStats) -> None:
-        """
-        Reset stats and counters to 0
-
-        :param stats: copy of Etsy stats to reset process
-        :return:
-        """
+        """Reset counts and update AIO"""
         # Update all things to be equal to current stats
         self.daily_order_count = 0
         self.starting_favorite_count = self.favorite_count = stats.favorite_count
@@ -387,6 +375,7 @@ class AIOEtsyStats:
                               sold_count=sold_count, avatar_url=avatar_url, errors=errors)
 
     def _log_current_stats(self):
+        """Log current stats to debug"""
         self.logger.debug("Logging current stats")
         self.logger.debug(str(dict([
             ("daily-order-count", self.daily_order_count),
@@ -451,10 +440,12 @@ class AIOEtsyStats:
         # endregion
 
     def _add_scheduled_job(self):
+        """Used to add the job. Can be called again if you have to remove it from the schedule"""
         minutes = self.scrape_interval_minutes
         schedule.every(minutes).to(minutes+1).minutes.do(self.collect_and_publish)
 
     def main(self):
+        """Run this to have this run on a schedule"""
         # Repeat to update the Etsy counts
         self.logger.debug(f"Scrapes will be performed about every {self.scrape_interval_minutes} minute(s)")
 
