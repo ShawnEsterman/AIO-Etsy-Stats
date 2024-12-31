@@ -4,7 +4,7 @@ Python script to scrape an Etsy store page and publish stats to Adafruit IO. It 
 can use the metrics to easily see how many sales in a day. 
 
 > [!IMPORTANT]
-> This python repository is a part of a late Christmas gift to my wife, Nicole, who started her Etsy store in 2024. I hope that she loves it! ❤️
+> This python repository is a part of a late Christmas gift and now birthday present to my wife, Nicole, who started her Etsy store in 2024. I hope that she loves it! ❤️
 
 > Cha Ching
 
@@ -22,11 +22,17 @@ as they have a library for Adafruit IO using MQTT. I'll try and share that code 
 
 ## Requirements
 
+**Script Runner** - I'm running this in a docker container in a stack managed by Portainer, but anywhere you can continually run the script will work. 
+
+## Optional
+
+If you don't want to use AIO, you can just watch the logs, but it is not as fun.
+
 **Adafruit IO Account** - You can use a free one if you've never used it. It only makes 10 feeds which is what you get with a free account. However, on
 the free account there is rate limiting so try to limit the amount of times you scrape as that function will update feeds. The code does not account for
-throttling. Please don't abuse this great, free service. 
+throttling. Please don't abuse this great, free service.
 
-**Script Runner** - I'm running this in a docker container in a stack managed by Portainer, but anywhere you can continually run the script will work. 
+**Discord Webhook** - You can add a discord webhook and have it log INFO and above messages to a Discord channel for monitoring and alerting.
 
 ## Installation
 
@@ -40,4 +46,4 @@ cd AIO-Etsy-Stats
 docker-compose up -d
 ```
 
-[^1]: When I told Nicole I thought it was cute, she told me that Etsy puts "Cha Ching" in thier emails. So it was Etsy being cute and not something she came up with 🤣
+[^1]: When I told Nicole I thought it was cute, she told me that Etsy puts "Cha Ching" in their emails. So it was Etsy being cute and not something she came up with 🤣
