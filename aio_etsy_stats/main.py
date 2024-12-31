@@ -277,7 +277,8 @@ class AIOEtsyStats:
             self._send_aio(feed=feed, value=value)
 
         # We need to get a new reset date and set the values for the starting values
-        self.reset_datetime = datetime.combine(date.today(), time(hour=self.reset_hour))
+        self.reset_datetime = datetime.combine(date.today(), time(hour=self.reset_hour, minute=0,
+                                                                  second=0, microsecond=0))
         if self.reset_datetime < datetime.now():
             # Just incase you start this app after the current day's reset timer hit
             self.reset_datetime = self.reset_datetime + timedelta(days=1)
