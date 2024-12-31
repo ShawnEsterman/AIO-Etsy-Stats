@@ -257,14 +257,14 @@ class AIOEtsyStats:
                 self.logger.exception(e)
         return return_val
 
-    def _reset_counts(self, stats: EtsyStoreStats) -> None:
+    def _reset_counts(self) -> None:
         """Reset counts and update AIO"""
         # Update all things to be equal to current stats
         self.daily_order_count = 0
-        self.starting_favorite_count = self.favorite_count = stats.favorite_count
-        self.starting_rating = self.rating = stats.rating
-        self.starting_rating_count = self.rating_count = stats.rating_count
-        self.starting_sold_count = self.sold_count = stats.sold_count
+        self.starting_favorite_count = self.favorite_count
+        self.starting_rating = self.rating
+        self.starting_rating_count = self.rating_count
+        self.starting_sold_count = self.sold_count
 
         updates = [
             ("daily-order-count", self.daily_order_count),
@@ -402,7 +402,7 @@ class AIOEtsyStats:
         # If we passed reset_datetime, process the reset using the current stats
         if datetime.now() > self.reset_datetime:
             self.logger.info(f"Reset time of {self.reset_datetime} has been passed")
-            self._reset_counts(stats=stats)
+            self._reset_counts()
 
         # region Process Stats
         if all([isinstance(stats.favorite_count, int), self.favorite_count != stats.favorite_count]):
