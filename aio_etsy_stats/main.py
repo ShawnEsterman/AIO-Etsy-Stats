@@ -137,6 +137,8 @@ class AIOEtsyStats:
         else:
             self.reset_datetime: datetime = datetime.now()
         self._validate_reset_hour()
+
+        self._log_current_stats()
         # endregion
 
         # region Test connectivity
@@ -384,6 +386,17 @@ class AIOEtsyStats:
         return EtsyStoreStats(favorite_count=favorite_count, rating=rating, rating_count=rating_count, 
                               sold_count=sold_count, avatar_url=avatar_url, errors=errors)
 
+    def _log_current_stats(self):
+        self.logger.debug("Logging current stats")
+        self.logger.debug(str(dict([
+            ("daily-order-count", self.daily_order_count),
+            ("favorite-count", self.favorite_count), ("starting-favorite-count", self.starting_favorite_count),
+            ("rating", self.rating), ("starting-rating", self.starting_rating),
+            ("rating-count", self.rating_count), ("starting-rating-count", self.starting_rating_count),
+            ("sold-count", self.sold_count), ("starting-sold-count", self.starting_sold_count),
+            ("reset-hour", self.reset_hour), ("reset-datetime", self.reset_datetime)
+        ])))
+
     def collect_and_publish(self) -> None:
         """Handles the main portion of this class and runs the helper functions in the main order"""
         self.update_total += 1
@@ -395,13 +408,7 @@ class AIOEtsyStats:
         # Get Etsy stats
         stats = self.scrape_etsy_stats()
         if (self.update_total % 30) == 0:
-            self.logger.debug("Logging current stats")
-            self.logger.debug(str(dict([
-                ("favorite-count", stats.favorite_count), ("starting-favorite-count", self.starting_favorite_count),
-                ("rating", stats.rating), ("starting-rating", self.starting_rating),
-                ("rating-count", stats.rating_count), ("starting-rating-count", self.starting_rating_count),
-                ("sold-count", stats.sold_count), ("starting-sold-count", self.starting_sold_count),
-            ])))
+            self._log_current_stats()
 
         # If we passed reset_datetime, process the reset using the current stats
         if datetime.now() > self.reset_datetime:
