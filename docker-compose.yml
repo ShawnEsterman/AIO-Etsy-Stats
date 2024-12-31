@@ -19,11 +19,11 @@ services:
     # and I did not want to add building a docker container using GitHub CI. I'm only familiar with building containers
     # in GitLab CI.
     command: >
-      "bash -c "
+      'bash -c "
       python -m venv /app
       && source /app/bin/activate
       && pip install setuptools --upgrade --quiet
       && pip install /app/. --quiet
-      && python /app/aio_etsy_stats/main.py"
+      && python /app/aio_etsy_stats/main.py"'
     volumes:
       - .:/app
