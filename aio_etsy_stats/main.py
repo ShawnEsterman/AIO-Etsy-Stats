@@ -430,7 +430,7 @@ class AIOEtsyStats:
         if all([isinstance(stats.sold_count, int), self.sold_count != stats.sold_count]):
             self.logger.info(f"The {self.shop} Sold Count changed {self.sold_count} -> {stats.sold_count}")
             # If an item was sold, increase the order_count
-            if self.sold_count > stats.sold_count:
+            if self.sold_count < stats.sold_count:
                 self.logger.info(
                     f"Since {self.shop} Sold Count increased, it will be considered an order. Daily Order Count "
                     f"increased from {self.daily_order_count} -> {self.daily_order_count + 1}")
