@@ -27,9 +27,9 @@ title: Nicole's Over-Engineered Gift
 config:
   theme: base
   themeVariables:
-    primaryColor: "#20c997"
-    primaryTextColor: "#212529"
-    primaryBorderColor: "#adb5bd"
+    primaryColor: "#13795b"
+    primaryTextColor: "#fff"
+    primaryBorderColor: "#79dfc1"
     lineColor: "#6610f2"
     secondaryColor: "#6f42c1"
     tertiaryColor: "#ffc107"
