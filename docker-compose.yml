@@ -28,7 +28,7 @@ services:
   aio_etsy_stats:
     image: python:3.13-slim-bullseye
     container_name: aio_etsy_stats
-    network_mode: "service:wireguard"
+    network_mode: "service:wireguard-aio_etsy_stats"
     depends_on:
       - wireguard
     restart: unless-stopped
