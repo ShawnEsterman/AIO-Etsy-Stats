@@ -1,8 +1,7 @@
 ---
 networks:
-  default:
-    external:
-      name: docker-common
+  docker-common:
+    external: true
 
 services:
   wireguard:
