@@ -58,6 +58,10 @@ flowchart LR;
 Portainer like I am and point to this repo, set environment variables for your needs, and deploy. However, you will need to at least request a free Business Edition license as the 
 option `Local filesystem path` needs to be used as it references other files from the repository.  
 
+**Wireguard** - I tried running this for a bit at 5 minute intervals with variety, but Etsy caught on. To prevent my 
+home IP from being blocked I added a WireGuard container to route the traffic to a VPN. See the 
+[docker-compose.yml](docker-compose.yml) file. 
+
 ## Optional
 
 If you don't want to use AIO, you can just watch the logs, but it is not as fun.
