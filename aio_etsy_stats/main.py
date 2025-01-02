@@ -479,7 +479,10 @@ class AIOEtsyStats:
     def _add_scheduled_job(self):
         """Used to add the job. Can be called again if you have to remove it from the schedule"""
         minutes = self.scrape_interval_minutes
-        schedule.every(minutes).to(minutes+1).minutes.do(self.collect_and_publish)
+        if minutes > 10:
+            schedule.every(minutes - 5).to(minutes).minutes.do(self.collect_and_publish)
+        else:
+            schedule.every(minutes).to(minutes + 5).minutes.do(self.collect_and_publish)
 
     def main(self):
         """Run this to have this run on a schedule"""
