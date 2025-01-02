@@ -1,20 +1,47 @@
 ---
+networks:
+  default:
+    external:
+      name: docker-common
+
 services:
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE #optional
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      - LOG_CONFS=true #optional
+    volumes:
+      - ${WG_CONFIG_LOC}:/config
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+
   aio_etsy_stats:
     image: python:3.13-slim-bullseye
     container_name: aio_etsy_stats
-    restart: always
+    network_mode: "service:wireguard"
+    depends_on:
+      - wireguard
+    restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=America/Chicago
       - ETSY_STORE_NAME=${ETSY_STORE_NAME}
+      - SCRAPE_INTERVAL_MINUTES=${SCRAPE_INTERVAL_MINUTES}
       - DEFAULT_RESET_HOUR=${DEFAULT_RESET_HOUR}
       - AIO_USERNAME=${AIO_USERNAME}
       - AIO_PASSWORD=${AIO_PASSWORD}
       - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
       - DISCORD_AVATAR_URL=${DISCORD_AVATAR_URL}
-      - SCRAPE_INTERVAL_MINUTES=${SCRAPE_INTERVAL_MINUTES}
     # No giving me shit about installing the project every time. I have had to teach myself a lot of new tools for this
     # and I did not want to add building a docker container using GitHub CI. I'm only familiar with building containers
     # in GitLab CI.
