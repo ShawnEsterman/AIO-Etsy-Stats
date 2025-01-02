@@ -3,7 +3,9 @@ import datetime
 import json
 import logging
 import re
+import socket
 import sys
+import textwrap
 from datetime import datetime, date, time, timedelta
 from os import environ
 from random import uniform, choice
@@ -63,7 +65,12 @@ class AIOEtsyStats:
             self.logger.addHandler(discord_handler)
         # endregion
 
-        self.logger.info(f"Initiating AIOEtsyStats for {self.shop}")
+        self.logger.info(textwrap.dedent(f"""
+        {type(self).__name__} for **{self.shop}**
+        
+        -# Scraping for store metrics on host `{socket.gethostname()}`
+        -# Shawn ❤️ Nicole
+        """).strip())
 
         # region Setup AIO
         if not all([aio_username, aio_password]):
@@ -150,7 +157,11 @@ class AIOEtsyStats:
 
     def _atexit(self):
         """Log that the client is closing"""
-        self.logger.info(f"{type(self).__name__} for {self.shop} is exiting")
+        self.logger.info(textwrap.dedent(f"""
+        {type(self).__name__} for **{self.shop}**
+
+        -# Exiting on host `{socket.gethostname()}`
+        """).trim())
 
     def _get_starting_stats(self) -> dict:
         """Gets starting-stats feed and parses the json to dictionary"""
@@ -406,36 +417,61 @@ class AIOEtsyStats:
             self._reset_counts()
 
         # region Process Stats
+        # Favorites
         if all([isinstance(stats.favorite_count, int), self.favorite_count != stats.favorite_count]):
-            self.logger.info(f"The {self.shop} Favorite Count changed {self.favorite_count} -> {stats.favorite_count}")
+            self.logger.info(textwrap.dedent(f"""
+            Favorites for **{self.shop}**
+
+            -# Count changed `{self.favorite_count:,}` -> `{stats.favorite_count:,}`
+            """))
             self.favorite_count = stats.favorite_count
             self._send_aio(feed="favorite-count", value=self.favorite_count)
 
-        if all([isinstance(stats.rating, float), self.rating != stats.rating]):
-            rating_change = round((stats.rating - self.rating), 4)
-            message = f"The {self.shop} Rating changed from {self.rating} -> {stats.rating}"
-            if rating_change > 0:
-                self.logger.info(message)
-            else:
-                # Give warning if the rating goes down
-                self.logger.warning(message)
-            self.rating = stats.rating
-            self._send_aio(feed="rating", value=self.rating)
+        # Rating
+        if all([isinstance(stats.rating, float), self.rating != stats.rating]) or \
+                all([isinstance(stats.rating_count, int), self.rating_count != stats.rating_count]):
 
-        if all([isinstance(stats.rating_count, int), self.rating_count != stats.rating_count]):
-            self.logger.info(f"The {self.shop} Rating Count changed {self.rating_count} -> {stats.rating_count}")
+            message = textwrap.dedent(f"""
+            Rating for **{self.shop}**
+
+            -# Count changed `{self.rating_count:,}` -> `{stats.rating_count:,}`
+            """)
             self.rating_count = stats.rating_count
             self._send_aio(feed="rating-count", value=self.rating_count)
 
+            # If rating did not change, do not say it did
+            rating_change = round((stats.rating - self.rating), 4)
+            if rating_change == 0.0:
+                message += f"\n-# Overall is `{self.rating:.4f}`"
+            else:
+                message += f"\n-# Overall changed `{self.rating:.4f}` -> `{stats.rating:.4f}`"
+                self.rating = stats.rating
+                self._send_aio(feed="rating", value=self.rating)
+
+            # If it goes up, normal
+            if rating_change >= 0:
+                self.logger.info(message)
+            else:
+                # If it goes down, warning
+                self.logger.warning(message)
+
+        # Sold
         if all([isinstance(stats.sold_count, int), self.sold_count != stats.sold_count]):
-            self.logger.info(f"The {self.shop} Sold Count changed {self.sold_count} -> {stats.sold_count}")
-            # If an item was sold, increase the order_count
+            # Create message
+            message = textwrap.dedent(f"""
+            Orders for **{self.shop}**
+
+            -# Sold Count changed `{self.sold_count:,}` -> `{stats.sold_count:,}`
+            """)
             if self.sold_count < stats.sold_count:
-                self.logger.info(
-                    f"Since {self.shop} Sold Count increased, it will be considered an order. Daily Order Count "
-                    f"increased from {self.daily_order_count} -> {self.daily_order_count + 1}")
+                message += f"\n-# Daily Order Count changed from {self.daily_order_count:,} -> " \
+                           f"{(self.daily_order_count + 1):,}"
                 self.daily_order_count += 1
                 self._send_aio(feed="daily-order-count", value=self.daily_order_count)
+            else:
+                message += f"\n-# Daily Order Count is {self.daily_order_count:,}"
+            self.logger.info(message)
+
             self.sold_count = stats.sold_count
             self._send_aio(feed="sold-count", value=self.sold_count)
         # endregion
