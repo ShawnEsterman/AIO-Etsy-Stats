@@ -161,7 +161,7 @@ class AIOEtsyStats:
         {type(self).__name__} for **{self.shop}**
 
         -# Exiting on host `{socket.gethostname()}`
-        """).trim())
+        """).strip())
 
     def _get_starting_stats(self) -> dict:
         """Gets starting-stats feed and parses the json to dictionary"""
@@ -423,7 +423,7 @@ class AIOEtsyStats:
             Favorites for **{self.shop}**
 
             -# Count changed `{self.favorite_count:,}` -> `{stats.favorite_count:,}`
-            """))
+            """).strip())
             self.favorite_count = stats.favorite_count
             self._send_aio(feed="favorite-count", value=self.favorite_count)
 
@@ -435,7 +435,7 @@ class AIOEtsyStats:
             Rating for **{self.shop}**
 
             -# Count changed `{self.rating_count:,}` -> `{stats.rating_count:,}`
-            """)
+            """).strip()
             self.rating_count = stats.rating_count
             self._send_aio(feed="rating-count", value=self.rating_count)
 
@@ -450,10 +450,10 @@ class AIOEtsyStats:
 
             # If it goes up, normal
             if rating_change >= 0:
-                self.logger.info(message)
+                self.logger.info(message.strip())
             else:
                 # If it goes down, warning
-                self.logger.warning(message)
+                self.logger.warning(message.strip())
 
         # Sold
         if all([isinstance(stats.sold_count, int), self.sold_count != stats.sold_count]):
@@ -462,15 +462,15 @@ class AIOEtsyStats:
             Orders for **{self.shop}**
 
             -# Sold Count changed `{self.sold_count:,}` -> `{stats.sold_count:,}`
-            """)
+            """).strip()
             if self.sold_count < stats.sold_count:
-                message += f"\n-# Daily Order Count changed from {self.daily_order_count:,} -> " \
-                           f"{(self.daily_order_count + 1):,}"
+                message += f"\n-# Daily Order Count changed from `{self.daily_order_count:,}` -> " \
+                           f"`{(self.daily_order_count + 1):,}`"
                 self.daily_order_count += 1
                 self._send_aio(feed="daily-order-count", value=self.daily_order_count)
             else:
-                message += f"\n-# Daily Order Count is {self.daily_order_count:,}"
-            self.logger.info(message)
+                message += f"\n-# Daily Order Count is `{self.daily_order_count:,}`"
+            self.logger.info(message.strip())
 
             self.sold_count = stats.sold_count
             self._send_aio(feed="sold-count", value=self.sold_count)
