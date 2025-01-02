@@ -30,7 +30,7 @@ services:
     container_name: aio_etsy_stats
     network_mode: "service:wireguard-aio_etsy_stats"
     depends_on:
-      - wireguard
+      - wireguard-aio_etsy_stats
     restart: unless-stopped
     environment:
       - PUID=1000
