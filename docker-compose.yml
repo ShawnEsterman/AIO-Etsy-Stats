@@ -4,9 +4,9 @@ networks:
     external: true
 
 services:
-  wireguard:
+  wireguard-aio_etsy_stats:
     image: lscr.io/linuxserver/wireguard:latest
-    container_name: wireguard
+    container_name: wireguard-aio_etsy_stats
     cap_add:
       - NET_ADMIN
       - SYS_MODULE #optional
@@ -17,6 +17,8 @@ services:
       - LOG_CONFS=true #optional
     volumes:
       - ${WG_CONFIG_LOC}:/config
+    networks:
+      - docker-common
     ports:
       - 51820:51820/udp
     sysctls:
