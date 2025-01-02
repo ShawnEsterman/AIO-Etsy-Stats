@@ -6,7 +6,8 @@ dependencies = [
     "beautifulsoup4==4.12.3",
     "requests==2.32.3",
     "schedule==1.2.2",
-    "python-logging-discord-handler==0.1.4"
+    "python-logging-discord-handler==0.1.4",
+    "selenium==4.27.1",
 ]
 requires-python = ">=3.8"
 authors = [
