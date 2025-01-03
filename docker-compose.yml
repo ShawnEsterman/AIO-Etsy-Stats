@@ -26,6 +26,7 @@ services:
     restart: unless-stopped
 
   aio_etsy_stats:
+    image: aioetsystats
     build: DockerFile
     container_name: aio_etsy_stats
     network_mode: "service:wireguard-aio_etsy_stats"
