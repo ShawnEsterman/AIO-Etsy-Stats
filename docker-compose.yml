@@ -29,6 +29,7 @@ services:
     image: ghcr.io/shawnesterman/aio-etsy-stats:main
     container_name: aio_etsy_stats
     network_mode: "service:wireguard-aio_etsy_stats"
+    shm_size: 2g
     depends_on:
       - wireguard-aio_etsy_stats
     restart: unless-stopped
