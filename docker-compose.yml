@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
 
   aio_etsy_stats:
-    image: python:3.13-slim-bullseye
+    image: selenium/standalone-firefox:133.0
     container_name: aio_etsy_stats
     network_mode: "service:wireguard-aio_etsy_stats"
     depends_on:
