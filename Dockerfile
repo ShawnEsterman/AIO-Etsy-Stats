@@ -8,6 +8,6 @@ COPY --chown=1200:1201 . /app
 
 USER 1200
 
-RUN pip3 install /app/. --quiet
+RUN pip install /app/. --quiet
 
-CMD [ "python3", "/app/aio_etsy_stats/main.py" ]
+CMD [ "python", "/app/aio_etsy_stats/main.py" ]
