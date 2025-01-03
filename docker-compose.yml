@@ -26,8 +26,7 @@ services:
     restart: unless-stopped
 
   aio_etsy_stats:
-    image: aioetsystats
-    build: DockerFile
+    image: ghcr.io/shawnesterman/aio-etsy-stats:main
     container_name: aio_etsy_stats
     network_mode: "service:wireguard-aio_etsy_stats"
     depends_on:
@@ -44,5 +43,3 @@ services:
       - AIO_PASSWORD=${AIO_PASSWORD}
       - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
       - DISCORD_AVATAR_URL=${DISCORD_AVATAR_URL}
-    volumes:
-      - .:/app
