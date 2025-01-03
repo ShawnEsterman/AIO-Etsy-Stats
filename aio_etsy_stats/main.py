@@ -163,6 +163,10 @@ class AIOEtsyStats:
         self._log_current_stats()
         # endregion
 
+        # region Simple test
+        page = self._get_selenium_page_source(url="https://www.google.com/")
+        # endregion
+
         atexit.register(self._atexit)
 
     def _atexit(self):
@@ -185,12 +189,15 @@ class AIOEtsyStats:
         content = None
         try:
             if path.exists("/usr/bin/geckodriver"):
+                self.logger.info("Using geckodriver")
                 firefox_service = webdriver.FirefoxService(executable_path="/usr/bin/geckodriver")
                 driver = webdriver.Firefox(service=firefox_service)
             else:
                 driver = webdriver.Firefox()
 
             driver.get(url)
+            sleep(2)
+            self.logger.debug(f"Page loaded. Page Title: {driver.title}")
             content = driver.page_source
         except Exception as e:
             self.logger.warning("An error occurred getting page with Selenium Firefox")
@@ -301,69 +308,78 @@ class AIOEtsyStats:
         avatar_url = None
         errors = 0
 
+        soup = None
         page_source = self._get_selenium_page_source(url=self.scrape_url)
-        soup = BeautifulSoup(page_source, "html.parser")
 
-        # region Favorite Count
         try:
-            scripts = soup.find_all(name="script")
-            for script in scripts:
-                match = re.search(r".*\"num_favorers\":(\d+),.*", script.get_text().strip())
-                if match:
-                    favorite_count = int(match[1])
+            soup = BeautifulSoup(page_source, "html.parser")
         except Exception as e:
-            self.logger.warning("Error occurred parsing for Favorite Count")
+            self.logger.warning("Unable to have BeautifulSoup parse page source")
             self.logger.exception(e)
             errors += 1
-        # endregion
 
-        # region Rating
-        found_rating = None
-        try:
-            found_rating = soup.find(name="input", attrs={"name": "rating"})
-            if found_rating:
-                rating = float(found_rating.get("value"))
-        except Exception as e:
-            self.logger.warning("Error occurred parsing for Rating")
-            self.logger.exception(e)
-            errors += 1
-        # endregion
-
-        # region Rating Count
-        if found_rating:
+        if soup:
+            # region Favorite Count
             try:
-                found_ratings = found_rating.parent.parent.find(string=re.compile(r"\(\d+\)"))
-                if found_ratings:
-                    rating_count = int(found_ratings.strip().replace("(", "").replace(")", ""))
+                scripts = soup.find_all(name="script")
+                for script in scripts:
+                    match = re.search(r".*\"num_favorers\":(\d+),.*", script.get_text().strip())
+                    if match:
+                        favorite_count = int(match[1])
             except Exception as e:
-                self.logger.warning("Error occurred parsing for Rating Count")
+                self.logger.warning("Error occurred parsing for Favorite Count")
+                self.logger.exception(e)
+                self.logger.warning(f"Page Source:\n{page_source}")
+                errors += 1
+            # endregion
+
+            # region Rating
+            found_rating = None
+            try:
+                found_rating = soup.find(name="input", attrs={"name": "rating"})
+                if found_rating:
+                    rating = float(found_rating.get("value"))
+            except Exception as e:
+                self.logger.warning("Error occurred parsing for Rating")
                 self.logger.exception(e)
                 errors += 1
-        # endregion
+            # endregion
 
-        # region Sold Count
-        try:
-            found_sales = soup.find(string=re.compile("([0-9,]) Sales"))
-            if found_sales:
-                sold_count = int(found_sales.get_text().strip().replace(" Sales", "").replace(",", ""))
-        except Exception as e:
-            self.logger.warning("Error occurred parsing for Sold Count")
-            self.logger.exception(e)
-            errors += 1
-        # endregion
+            # region Rating Count
+            if found_rating:
+                try:
+                    found_ratings = found_rating.parent.parent.find(string=re.compile(r"\(\d+\)"))
+                    if found_ratings:
+                        rating_count = int(found_ratings.strip().replace("(", "").replace(")", ""))
+                except Exception as e:
+                    self.logger.warning("Error occurred parsing for Rating Count")
+                    self.logger.exception(e)
+                    errors += 1
+            # endregion
 
-        # region Avatar URL
-        try:
-            found_avatar_div = soup.find(name="div", attrs={"class": "condensed-header-shop-image"})
-            if found_avatar_div:
-                found_avatar_img = found_avatar_div.findChild("img")
-                if "src" in found_avatar_img.attrs:
-                    avatar_url = found_avatar_img.attrs["src"]
-                else:
-                    self.logger.debug("Unable to get Avatar URL")
-        except Exception as e:
-            errors += 1
-        # endregion
+            # region Sold Count
+            try:
+                found_sales = soup.find(string=re.compile("([0-9,]) Sales"))
+                if found_sales:
+                    sold_count = int(found_sales.get_text().strip().replace(" Sales", "").replace(",", ""))
+            except Exception as e:
+                self.logger.warning("Error occurred parsing for Sold Count")
+                self.logger.exception(e)
+                errors += 1
+            # endregion
+
+            # region Avatar URL
+            try:
+                found_avatar_div = soup.find(name="div", attrs={"class": "condensed-header-shop-image"})
+                if found_avatar_div:
+                    found_avatar_img = found_avatar_div.findChild("img")
+                    if "src" in found_avatar_img.attrs:
+                        avatar_url = found_avatar_img.attrs["src"]
+                    else:
+                        self.logger.debug("Unable to get Avatar URL")
+            except Exception as e:
+                errors += 1
+            # endregion
 
         return EtsyStoreStats(favorite_count=favorite_count, rating=rating, rating_count=rating_count, 
                               sold_count=sold_count, avatar_url=avatar_url, errors=errors)
