@@ -13,4 +13,4 @@ USER 1200
 
 RUN pip3 install /app/. --quiet --break-system-packages
 
-CMD [ "/bin/bash", "-c", "python3", "/app/aio_etsy_stats/main.py" ]
+ENTRYPOINT [ "python3", "/app/aio_etsy_stats/main.py" ]
