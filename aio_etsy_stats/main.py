@@ -76,7 +76,8 @@ class AIOEtsyStats:
             self.logger.addHandler(discord_handler)
         # endregion
 
-        if stats.errors:
+        # Now that logger is enabled, log if it was okay
+        if stats.errors > 0:
             self.logger.debug(f"Stats were returned with {stats.errors} error(s)")
         else:
             self.logger.debug("Initial Stats were returned okay")
@@ -168,7 +169,8 @@ class AIOEtsyStats:
         # endregion
 
         # region Simple test
-        page = self._get_selenium_page_source(url="https://www.google.com/")
+        self.logger.debug("Testing connection to google.com")
+        _ = self._get_selenium_page_source(url="https://www.google.com/")
         # endregion
 
         atexit.register(self._atexit)
@@ -193,7 +195,6 @@ class AIOEtsyStats:
         content = None
         try:
             if path.exists("/usr/bin/geckodriver"):
-                self.logger.info("Using geckodriver")
                 firefox_service = webdriver.FirefoxService(executable_path="/usr/bin/geckodriver")
                 driver = webdriver.Firefox(service=firefox_service)
             else:
