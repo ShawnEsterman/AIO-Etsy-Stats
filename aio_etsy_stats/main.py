@@ -7,7 +7,7 @@ import socket
 import sys
 import textwrap
 from datetime import datetime, date, time, timedelta
-from os import environ
+from os import environ, path
 from random import uniform, choice
 from time import sleep
 from typing import NamedTuple, Optional
@@ -184,7 +184,12 @@ class AIOEtsyStats:
         driver = None
         content = None
         try:
-            driver = webdriver.Firefox()
+            if path.exists("/usr/bin/geckodriver"):
+                firefox_service = webdriver.FirefoxService(executable_path="/usr/bin/geckodriver")
+                driver = webdriver.Firefox(service=firefox_service)
+            else:
+                driver = webdriver.Firefox()
+
             driver.get(url)
             content = driver.page_source
         except Exception as e:
