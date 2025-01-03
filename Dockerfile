@@ -1,6 +1,14 @@
 FROM selenium/standalone-firefox:133.0
 
-RUN apt install python3 python3-pip python3-venv
+USER root
+
+RUN apt-get -y update && apt-get install -y python3 python3-pip python3-venv
+
+USER 1200
+
+RUN mkdir /app
+
+COPY . /app
 
 RUN python -m venv /app \
     && source /app/bin/activate \
