@@ -9,6 +9,6 @@ COPY --chown=1200:1201 . /app
 USER 1200
 
 RUN python3 -m venv /app \
-    && source /app/bin/activate \
+    && . /app/bin/activate \
     && pip3 install setuptools --upgrade --quiet \
     && pip3 install /app/. --quiet
