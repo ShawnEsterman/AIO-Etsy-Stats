@@ -49,7 +49,7 @@ services:
     command: >
       bash -c "
       apt install python3-pip
-      python -m venv /app
+      && python -m venv /app
       && source /app/bin/activate
       && pip install setuptools --upgrade --quiet
       && pip install /app/. --quiet
