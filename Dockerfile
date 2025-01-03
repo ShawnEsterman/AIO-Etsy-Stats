@@ -6,4 +6,4 @@ RUN python -m venv /app \
     && source /app/bin/activate \
     && pip install setuptools --upgrade --quiet \
     && pip install /app/. --quiet \
-    && python /app/aio_etsy_stats/main.py"
+    && python /app/aio_etsy_stats/main.py
