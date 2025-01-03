@@ -26,7 +26,8 @@ services:
     restart: unless-stopped
 
   aio_etsy_stats:
-    image: selenium/standalone-firefox:133.0
+    image: AIOEtsyStats
+    build: DockerFile
     container_name: aio_etsy_stats
     network_mode: "service:wireguard-aio_etsy_stats"
     depends_on:
@@ -43,16 +44,5 @@ services:
       - AIO_PASSWORD=${AIO_PASSWORD}
       - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
       - DISCORD_AVATAR_URL=${DISCORD_AVATAR_URL}
-    # No giving me shit about installing the project every time. I have had to teach myself a lot of new tools for this
-    # and I did not want to add building a docker container using GitHub CI. I'm only familiar with building containers
-    # in GitLab CI.
-    command: >
-      bash -c "
-      apt install python3-pip
-      && python -m venv /app
-      && source /app/bin/activate
-      && pip install setuptools --upgrade --quiet
-      && pip install /app/. --quiet
-      && python /app/aio_etsy_stats/main.py"
     volumes:
       - .:/app
