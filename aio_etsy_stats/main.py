@@ -80,7 +80,7 @@ class AIOEtsyStats:
         if stats.errors > 0:
             self.logger.debug(f"Stats were returned with {stats.errors} error(s)")
         else:
-            self.logger.debug("Initial Stats were returned okay")
+            self.logger.debug(f"Initial Stats were returned okay. Example... sold {stats.sold_count}")
 
         public_ip = get_public_ip()
         self.logger.info(textwrap.dedent(f"""
@@ -166,11 +166,6 @@ class AIOEtsyStats:
         self._validate_reset_hour()
 
         self._log_current_stats()
-        # endregion
-
-        # region Simple test
-        self.logger.debug("Testing connection to google.com")
-        _ = self._get_selenium_page_source(url="https://www.google.com/")
         # endregion
 
         atexit.register(self._atexit)
