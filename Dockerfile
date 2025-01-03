@@ -12,4 +12,4 @@ RUN python3 -m venv /app \
     && . /app/bin/activate \
     && pip3 install /app/. --quiet
 
-CMD [ "/bin/bash", "-c", "/app/bin/activate", "&&",  "python3", "/app/aio_etsy_stats/main.py" ]
+CMD [ "echo $UID", "&&", "/bin/bash", "-c", "/app/bin/activate", "&&",  "python3", "/app/aio_etsy_stats/main.py" ]
