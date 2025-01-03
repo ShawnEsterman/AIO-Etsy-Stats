@@ -18,8 +18,18 @@ import schedule
 from Adafruit_IO.model import Group, Feed
 from bs4 import BeautifulSoup
 from discord_logging.handler import DiscordHandler
-from requests import Session
-from requests.adapters import HTTPAdapter
+from selenium import webdriver
+
+
+def get_public_ip():
+    response = requests.get('https://api.ipify.org').text
+    if response:
+        return response
+
+
+class DummyLogger(object):
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
 
 
 class EtsyStoreStats(NamedTuple):
@@ -43,6 +53,7 @@ class AIOEtsyStats:
         self.scrape_interval_minutes = scrape_interval_minutes
 
         # Get the current stats just incase this hasn't been set up before or AIO is not used
+        self.logger = DummyLogger()  # Temporary
         stats = self.scrape_etsy_stats()
 
         # region Logging
@@ -65,10 +76,14 @@ class AIOEtsyStats:
             self.logger.addHandler(discord_handler)
         # endregion
 
+        public_ip = get_public_ip()
+
         self.logger.info(textwrap.dedent(f"""
         {type(self).__name__} for **{self.shop}**
         
         -# Scraping for store metrics on host `{socket.gethostname()}`
+        -# Scrapes every {scrape_interval_minutes} minutes
+        -# Public IP: {public_ip}
         -# Shawn ❤️ Nicole
         """).strip())
 
@@ -148,11 +163,6 @@ class AIOEtsyStats:
         self._log_current_stats()
         # endregion
 
-        # region Test connectivity
-        self.logger.debug("Testing connectivity to etsy.com. Only errors will be logged")
-        _ = self._get_session_response(url="https://www.etsy.com/")
-        # endregion
-
         atexit.register(self._atexit)
 
     def _atexit(self):
@@ -169,51 +179,22 @@ class AIOEtsyStats:
         starting_stats_response = starting_stats_response.replace("\'", "\"")
         return json.loads(starting_stats_response)
 
-    def _get_session_response(self, url: str) -> requests.Response:
-        """Creates a temporary session with headers built for scraping. Then gets the URL you would like"""
-        # region Create Session
-        session = Session()
-
-        # Randomize the referer each time
-        referer = choice(seq=[
-            "https://www.google.com/",
-            "https://www.bing.com/",
-            "https://www.yahoo.com/"
-            f"https://www.etsy.com/shop/{self.shop}?ref=sim_anchor",
-        ])
-
-        # Recommend headers for scraping
-        session.headers = {
-            "User-Agent": "XYZ/3.0",
-            "Referer": referer,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
-                      ",application/signed-exchange;v=b3;q=0.7",
-            "Accept-Encoding": "gzip, deflate, br, zstd",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Cache-Control": "max-age=0",
-        }
-        session.mount("https://", HTTPAdapter(max_retries=3))  # Add adapter to do retries when failure
-        # endregion
-        
-        response = None
+    def _get_selenium_page_source(self, url: str) -> str:
+        """Gets webpage content with selenium"""
+        driver = None
+        content = None
         try:
-            response = session.get(url=url)
-            if response.status_code == 403 or response.status_code == 429:
-                # Wait at 10 minutes before starting another scrape
-                self.logger.warning(f"Etsy returned status code {response.status_code}. "
-                                    f"Waiting 10 minutes before making another request")
-                schedule.clear()  # Clear schedule
-                sleep(secs=10*60)  # Wait 10 minutes
-                self._add_scheduled_job()  # Add the job back
-
-            response.raise_for_status()
+            driver = webdriver.Firefox()
+            driver.get(url)
+            content = driver.page_source
         except Exception as e:
-            self.logger.warning(f"An error occurred trying to get {url}")
+            self.logger.warning("An error occurred getting page with Selenium Firefox")
             self.logger.exception(e)
         finally:
-            del session
-            
-        return response
+            if driver:
+                driver.quit()
+
+        return content
 
     def _validate_reset_hour(self):
         """Used to validate that the reset hour is set correctly in the event it is changed on AIO"""
@@ -315,12 +296,8 @@ class AIOEtsyStats:
         avatar_url = None
         errors = 0
 
-        response = self._get_session_response(url=self.scrape_url)
-        if not response or not hasattr(response, "text"):
-            self.logger.error(f"Response from {self.scrape_url} did not contain text element to parse")
-            return EtsyStoreStats(errors=1)
-
-        soup = BeautifulSoup(response.text, "html.parser")
+        page_source = self._get_selenium_page_source(url=self.scrape_url)
+        soup = BeautifulSoup(page_source, "html.parser")
 
         # region Favorite Count
         try:
