@@ -48,6 +48,7 @@ services:
     # in GitLab CI.
     command: >
       bash -c "
+      apt install python3-pip
       python -m venv /app
       && source /app/bin/activate
       && pip install setuptools --upgrade --quiet
