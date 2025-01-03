@@ -8,8 +8,6 @@ COPY --chown=1200:1201 . /app
 
 USER 1200
 
-RUN python3 -m venv /app \
-    && . /app/bin/activate \
-    && pip3 install /app/. --quiet
+RUN pip3 install /app/. --quiet --no-warn-when-using-as-a-root-user
 
-CMD [ "/bin/bash", "-c", "source", "/app/bin/activate", "&&",  "python3", "/app/aio_etsy_stats/main.py" ]
+CMD [ "/bin/bash", "-c", "python3", "/app/aio_etsy_stats/main.py" ]
