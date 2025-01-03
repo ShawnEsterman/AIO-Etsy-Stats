@@ -12,3 +12,5 @@ RUN python3 -m venv /app \
     && . /app/bin/activate \
     && pip3 install setuptools --upgrade --quiet \
     && pip3 install /app/. --quiet
+
+CMD [ "python3", "/app/aio_etsy_stats/main.py" ]
