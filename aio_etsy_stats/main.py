@@ -76,8 +76,12 @@ class AIOEtsyStats:
             self.logger.addHandler(discord_handler)
         # endregion
 
-        public_ip = get_public_ip()
+        if stats.errors:
+            self.logger.debug(f"Stats were returned with {stats.errors} error(s)")
+        else:
+            self.logger.debug("Initial Stats were returned okay")
 
+        public_ip = get_public_ip()
         self.logger.info(textwrap.dedent(f"""
         {type(self).__name__} for **{self.shop}**
         
@@ -197,8 +201,11 @@ class AIOEtsyStats:
 
             driver.get(url)
             sleep(2)
-            self.logger.debug(f"Page loaded. Page Title: {driver.title}")
             content = driver.page_source
+
+            if not content:
+                self.logger.debug(f"No content for url {url}. Page title: {driver.title}")
+
         except Exception as e:
             self.logger.warning("An error occurred getting page with Selenium Firefox")
             self.logger.exception(e)
@@ -212,7 +219,7 @@ class AIOEtsyStats:
         """Used to validate that the reset hour is set correctly in the event it is changed on AIO"""
         # Prioritize AIO, but use the environment variable if not available
         desired_reset_hour = int(self._receive_aio(feed="reset-hour", default_value=self.default_reset_hour,
-                                                    silent=True))
+                                                   silent=True))
         if desired_reset_hour:
             # If the server shows the reset_hour different, update it
             if self.reset_hour != desired_reset_hour:
@@ -311,12 +318,15 @@ class AIOEtsyStats:
         soup = None
         page_source = self._get_selenium_page_source(url=self.scrape_url)
 
-        try:
-            soup = BeautifulSoup(page_source, "html.parser")
-        except Exception as e:
-            self.logger.warning("Unable to have BeautifulSoup parse page source")
-            self.logger.exception(e)
-            errors += 1
+        if page_source:
+            try:
+                soup = BeautifulSoup(page_source, "html.parser")
+            except Exception as e:
+                self.logger.warning("Unable to have BeautifulSoup parse page source")
+                self.logger.exception(e)
+                errors += 1
+        else:
+            self.logger.warning("Nothing was returned for page source")
 
         if soup:
             # region Favorite Count
