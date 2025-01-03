@@ -8,6 +8,9 @@ COPY --chown=1200:1201 . /app
 
 USER 1200
 
-RUN pip3 install /app/. --quiet --no-warn-when-using-as-a-root-user
+ENV PYTHONUNBUFFERED="1"
+ENV PIP_ROOT_USER_ACTION="ignore"
+
+RUN pip3 install /app/. --quiet
 
 CMD [ "/bin/bash", "-c", "python3", "/app/aio_etsy_stats/main.py" ]
