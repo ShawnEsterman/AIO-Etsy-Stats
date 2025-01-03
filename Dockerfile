@@ -8,8 +8,7 @@ COPY --chown=1200:1201 . /app
 
 USER 1200
 
-RUN python -m venv /app \
+RUN python3 -m venv /app \
     && source /app/bin/activate \
-    && pip install setuptools --upgrade --quiet \
-    && pip install /app/. --quiet \
-    && python /app/aio_etsy_stats/main.py
+    && pip3 install setuptools --upgrade --quiet \
+    && pip3 install /app/. --quiet
