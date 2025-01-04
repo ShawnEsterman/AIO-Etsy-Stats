@@ -108,13 +108,13 @@ class AIOEtsyStats:
         else:
             self.logger.debug(f"Initial Stats were returned okay. Example... sold {stats.sold_count}")
 
-        public_ip = get_public_ip()
         self.logger.info(textwrap.dedent(f"""
         {type(self).__name__} for **{self.shop}**
         
         -# Scraping for store metrics on host `{socket.gethostname()}`
-        -# Scrapes every {scrape_interval_minutes} minutes
-        -# Public IP: {public_ip}
+        -# Public IP is `{get_public_ip()}`
+        -# Scraping using Selinium Chrome
+        -# Scrapes run about every {self.scrape_interval_minutes} minutes
         -# Shawn ❤️ Nicole
         """).strip())
 
@@ -295,13 +295,34 @@ class AIOEtsyStats:
 
     def _reset_counts(self) -> None:
         """Reset counts and update AIO"""
+        # We need to get a new reset date and set the values for the starting values
+        new_reset_datetime = datetime.combine(date.today(), time(hour=self.reset_hour, minute=0,
+                                                                 second=0, microsecond=0))
+        if new_reset_datetime < datetime.now():
+            # Just incase you start this app after the current day's reset timer hit
+            new_reset_datetime = self.reset_datetime + timedelta(days=1)
+        self.logger.info(textwrap.dedent(f"""
+        {type(self).__name__} for **{self.shop}**
+        
+        -# Reset time of {self.reset_datetime} has passed
+        -# Daily Order Count was `{self.daily_order_count}`
+        -# Daily Favorites was `{self.favorite_count - self.starting_favorite_count}
+        -# Daily Rating was `{(self.rating - self.starting_rating):4f}`
+        -# Daily Ratings was `{self.rating_count - self.rating}`
+        -# Daily Sold was `{self.sold_count - self.starting_sold_count}`
+        -# Next reset is {new_reset_datetime}
+        -# Public IP is `{get_public_ip()}`
+        -# Shawn ❤️ Nicole
+        """).strip())
+
         # Update all things to be equal to current stats
+        self.reset_datetime = new_reset_datetime
+
         self.daily_order_count = 0
         self.starting_favorite_count = self.favorite_count
         self.starting_rating = self.rating
         self.starting_rating_count = self.rating_count
         self.starting_sold_count = self.sold_count
-
         updates = [
             ("daily-order-count", self.daily_order_count),
             ("favorite-count", self.favorite_count),
@@ -312,13 +333,6 @@ class AIOEtsyStats:
         for feed, value in updates:
             self._send_aio(feed=feed, value=value)
 
-        # We need to get a new reset date and set the values for the starting values
-        self.reset_datetime = datetime.combine(date.today(), time(hour=self.reset_hour, minute=0,
-                                                                  second=0, microsecond=0))
-        if self.reset_datetime < datetime.now():
-            # Just incase you start this app after the current day's reset timer hit
-            self.reset_datetime = self.reset_datetime + timedelta(days=1)
-        self.logger.info(f"Starting counts are reset to current stats. Next reset will occur at {self.reset_datetime}")
         self._send_starting_stats()  # Send it when it is updated on the class instance
 
     def _send_starting_stats(self) -> None:
