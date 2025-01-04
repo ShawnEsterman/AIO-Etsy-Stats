@@ -5,10 +5,6 @@ ENV PIP_ROOT_USER_ACTION="ignore"
 
 COPY . /app
 
-RUN python3 -m venv /app \
-    && source /app/bin/activate \
-    && pip3 install setuptools --upgrade \
-    && pip3 install /app/.
+RUN pip3 install setuptools --upgrade && pip3 install /app/.
 
-ENTRYPOINT [ "source", "/app/bin/activate" ]
-CMD [ "python3", "/app/aio_etsy_stats/main.py" ]
+ENTRYPOINT [ "python3", "/app/aio_etsy_stats/main.py" ]
