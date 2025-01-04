@@ -10,8 +10,8 @@ RUN apt-get -y update \
 
 COPY --chown=1200:1201 . /app
 
-USER 1200:1201
-
 RUN pip3 install /app/. --quiet --break-system-packages
+
+USER 1200:1201
 
 ENTRYPOINT [ "python3", "/app/aio_etsy_stats/main.py" ]
