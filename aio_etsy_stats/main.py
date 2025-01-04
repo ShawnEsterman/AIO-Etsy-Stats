@@ -62,6 +62,7 @@ class AIOEtsyStats:
             while not test and ((datetime.now() - start) < timedelta(seconds=20)):
                 connection = sock.connect_ex((selenium_host, int(selenium_port)))
                 test = connection == 0
+                sleep(1)
             sock.close()
 
             self.driver = webdriver.Remote(
