@@ -57,11 +57,10 @@ class AIOEtsyStats:
         if selenium_host and selenium_port:
             print("Waiting up 20s for selenium host to be up")
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            test = False
+            connection = sock.connect_ex((selenium_host, int(selenium_port)))
             start = datetime.now()
-            while not test and ((datetime.now() - start) < timedelta(seconds=20)):
+            while (connection != 0) and ((datetime.now() - start) < timedelta(seconds=20)):
                 connection = sock.connect_ex((selenium_host, int(selenium_port)))
-                test = connection == 0
                 sleep(1)
             sock.close()
 
