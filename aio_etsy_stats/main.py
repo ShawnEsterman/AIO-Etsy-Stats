@@ -47,14 +47,14 @@ def test_port(hostname: str, port: int) -> int:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
     result = sock.connect_ex((hostname, int(port)))
-    print(result)
     sock.close()
     return result
 
+
 def get_timedelta_from_now(start: datetime) -> timedelta:
     result = datetime.now() - start
-    print(result)
     return result
+
 
 class AIOEtsyStats:
     """Class to store and record stats for Etsy"""
@@ -71,7 +71,7 @@ class AIOEtsyStats:
 
         # region selenium
         if self.selenium_host and self.selenium_port:
-            print("Waiting up 20s for selenium host to be up")
+            print("Waiting up to 20s for selenium container to be up")
             start = datetime.now()
             while (test_port(self.selenium_host, self.selenium_port) != 0) \
                     and (get_timedelta_from_now(start) < timedelta(seconds=20)):
