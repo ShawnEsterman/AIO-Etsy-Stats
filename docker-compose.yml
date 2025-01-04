@@ -1,8 +1,4 @@
 ---
-networks:
-  docker-common:
-    external: true
-
 services:
   wireguard-aio_etsy_stats:
     image: lscr.io/linuxserver/wireguard:latest
@@ -17,10 +13,9 @@ services:
       - LOG_CONFS=true #optional
     volumes:
       - ${WG_CONFIG_LOC}:/config
-    networks:
-      - docker-common
     ports:
       - 51820:51820/udp
+      - 4444:4444
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
     restart: unless-stopped
