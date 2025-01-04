@@ -46,12 +46,22 @@ class AIOEtsyStats:
     """Class to store and record stats for Etsy"""
     def __init__(self, shop: str, default_reset_hour: int = 14, scrape_interval_minutes: int = 10,
                  aio_username: str = None, aio_password: str = None,
-                 discord_webhook: str = None, discord_avatar_url: str = None):
+                 discord_webhook: str = None, discord_avatar_url: str = None,
+                 selenium_host: str = None, selenium_port: int = None):
         self.shop = shop
         self.scrape_url = f"https://www.etsy.com/shop/{shop}/sold"
         self.default_reset_hour = default_reset_hour
         self.scrape_interval_minutes = scrape_interval_minutes
-        self.driver = webdriver.Chrome()
+
+        # region selenium
+        if selenium_host and selenium_port:
+            self.driver = webdriver.Remote(
+                command_executor=f"http://{selenium_host}:{selenium_port}/wd/hub",
+                options=webdriver.ChromeOptions()
+            )
+        else:
+            self.driver = webdriver.Chrome()
+        # endregion
 
         # Get the current stats just incase this hasn't been set up before or AIO is not used
         self.logger = DummyLogger()  # Temporary
@@ -504,5 +514,7 @@ if __name__ == "__main__":
                           aio_username=environ.get("AIO_USERNAME"),
                           aio_password=environ.get("AIO_PASSWORD"),
                           discord_webhook=environ.get("DISCORD_WEBHOOK"),
-                          discord_avatar_url=environ.get("DISCORD_AVATAR_URL"))
+                          discord_avatar_url=environ.get("DISCORD_AVATAR_URL"),
+                          selenium_host=environ.get("SELENIUM_HOST"),
+                          selenium_port=environ.get("SELENIUM_PORT"))
     client.main()

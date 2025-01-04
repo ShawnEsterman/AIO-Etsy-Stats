@@ -1,17 +1,14 @@
-FROM selenium/standalone-chrome:4.27
+FROM python:3.13-slim-bullseye
 
 ENV PYTHONUNBUFFERED="1"
 ENV PIP_ROOT_USER_ACTION="ignore"
 
-USER root
+COPY . /app
 
-RUN apt-get -y update \
-    && apt-get install -y python3 python3-pip python3-setuptools
+RUN python3 -m venv /app \
+    && source /app/bin/activate \
+    && pip3 intsall setuptools --upgrade \
+    && pip3 install /app/.
 
-COPY --chown=1200:1201 . /app
-
-RUN pip3 install /app/. --quiet --break-system-packages
-
-USER 1200:1201
-
-ENTRYPOINT [ "python3", "/app/aio_etsy_stats/main.py" ]
+ENTRYPOINT [ "source", "/app/bin/activate" ]
+CMD [ "python3", "/app/aio_etsy_stats/main.py" ]
