@@ -56,6 +56,9 @@ def get_timedelta_from_now(start: datetime) -> timedelta:
     return result
 
 
+
+
+
 class AIOEtsyStats:
     """Class to store and record stats for Etsy"""
     def __init__(self, shop: str, default_reset_hour: int = 14, scrape_interval_minutes: int = 10,
@@ -68,15 +71,8 @@ class AIOEtsyStats:
         self.scrape_interval_minutes = scrape_interval_minutes
         self.selenium_host = selenium_host
         self.selenium_port = selenium_port
-
-        # region selenium
-        if self.selenium_host and self.selenium_port:
-            print("Waiting up to 20s for selenium container to be up")
-            start = datetime.now()
-            while (test_port(self.selenium_host, self.selenium_port) != 0) \
-                    and (get_timedelta_from_now(start) < timedelta(seconds=20)):
-                sleep(1)
-        # endregion
+        self.driver = None
+        self.set_selenium(selenium_host=selenium_host, selenium_port=selenium_port)
 
         # Get the current stats just incase this hasn't been set up before or AIO is not used
         self.logger = DummyLogger()  # Temporary
@@ -204,6 +200,24 @@ class AIOEtsyStats:
         -# Exiting on host `{socket.gethostname()}`
         """).strip())
 
+    def set_selenium(self, selenium_host: str, selenium_port: int) -> None:
+        self.selenium_host = selenium_host
+        self.selenium_port = selenium_port
+        if self.selenium_host and self.selenium_port:
+            print("Waiting up to 20s for selenium port to be open")
+            start = datetime.now()
+            while (test_port(self.selenium_host, self.selenium_port) != 0) \
+                    and (get_timedelta_from_now(start) < timedelta(seconds=20)):
+                sleep(1)
+
+        if self.selenium_host and self.selenium_port:
+            self.driver = webdriver.Remote(
+                command_executor=f"http://{self.selenium_host}:{self.selenium_port}/wd/hub",
+                options=webdriver.ChromeOptions()
+            )
+        else:
+            self.driver = webdriver.Chrome()
+
     def _get_starting_stats(self) -> dict:
         """Gets starting-stats feed and parses the json to dictionary"""
         starting_stats_response = self._receive_aio(feed="starting-stats")
@@ -212,31 +226,18 @@ class AIOEtsyStats:
 
     def _get_selenium(self, url: str) -> Tuple[str, str]:
         """Gets webpage content with selenium"""
-        # region selenium
-        if self.selenium_host and self.selenium_port:
-            driver = webdriver.Remote(
-                command_executor=f"http://{self.selenium_host}:{self.selenium_port}/wd/hub",
-                options=webdriver.ChromeOptions()
-            )
-        else:
-            driver = webdriver.Chrome()
-        # endregion
-
         content = None
         title = None
         try:
-            driver.get(url)
-            title = driver.title
-            content = driver.page_source
+            self.driver.get(url)
+            title = self.driver.title
+            content = self.driver.page_source
 
             if not content:
-                self.logger.debug(f"No content for url {url}. Page title: {driver.title}")
+                self.logger.debug(f"No content for url {url}. Page title: {title}")
         except Exception as e:
-            self.logger.warning("An error occurred getting page with Selenium Firefox")
+            self.logger.warning(f"An error occurred getting page {url} with Selenium Firefox")
             self.logger.exception(e)
-            raise e
-        finally:
-            driver.quit()
 
         return title, content
 
