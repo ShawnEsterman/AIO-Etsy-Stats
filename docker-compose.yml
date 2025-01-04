@@ -1,4 +1,9 @@
 ---
+networks:
+  aio-etsy-stats:
+    # Specify driver options
+    driver: bridge
+
 services:
   wireguard-aio_etsy_stats:
     image: lscr.io/linuxserver/wireguard:latest
