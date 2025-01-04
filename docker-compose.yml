@@ -43,7 +43,7 @@ services:
       - aio_etsy_stats-wireguard
     restart: unless-stopped
     environment:
-      - SELENIUM_HOST=aio_etsy_stats-selenium
+      - SELENIUM_HOST=localhost
       - SELENIUM_PORT=3897
       - ETSY_STORE_NAME=${ETSY_STORE_NAME}
       - SCRAPE_INTERVAL_MINUTES=${SCRAPE_INTERVAL_MINUTES}
