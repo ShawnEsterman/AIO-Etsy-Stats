@@ -7,8 +7,8 @@ import socket
 import sys
 import textwrap
 from datetime import datetime, date, time, timedelta
-from os import environ, path
-from random import uniform, choice
+from os import environ
+from random import uniform
 from time import sleep
 from typing import NamedTuple, Optional, Tuple
 
@@ -25,11 +25,6 @@ def get_public_ip():
     response = requests.get('https://api.ipify.org').text
     if response:
         return response
-
-
-class DummyLogger(object):
-    def __getattr__(self, name):
-        return lambda *args, **kwargs: None
 
 
 class EtsyStoreStats(NamedTuple):
@@ -58,23 +53,11 @@ def get_timedelta_from_now(start: datetime) -> timedelta:
 
 class AIOEtsyStats:
     """Class to store and record stats for Etsy"""
+
     def __init__(self, shop: str, default_reset_hour: int = 14, scrape_interval_minutes: int = 10,
                  aio_username: str = None, aio_password: str = None,
                  discord_webhook: str = None, discord_avatar_url: str = None,
                  selenium_host: str = None, selenium_port: int = None):
-        self.shop = shop
-        self.scrape_url = f"https://www.etsy.com/shop/{shop}/sold"
-        self.default_reset_hour = default_reset_hour
-        self.scrape_interval_minutes = scrape_interval_minutes
-        self.selenium_host = selenium_host
-        self.selenium_port = selenium_port
-        self.driver = None
-        self.set_selenium(selenium_host=selenium_host, selenium_port=selenium_port)
-
-        # Get the current stats just incase this hasn't been set up before or AIO is not used
-        self.logger = DummyLogger()  # Temporary
-        stats = self.scrape_etsy_stats()
-
         # region Logging
         logging.basicConfig()
         self.logger = logging.Logger(name=type(self).__name__)
@@ -83,7 +66,22 @@ class AIOEtsyStats:
         handler_stdout.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
         handler_stdout.setLevel(logging.DEBUG)
         self.logger.addHandler(handler_stdout)
+        # endregion
 
+        # region Class basics
+        self.shop = shop
+        self.scrape_url = f"https://www.etsy.com/shop/{shop}/sold"
+        self.default_reset_hour = default_reset_hour
+        self.scrape_interval_minutes = scrape_interval_minutes
+        self.selenium_host = selenium_host
+        self.selenium_port = selenium_port
+        # endregion
+
+        # Get the current stats just incase this hasn't been set up before or AIO is not used
+        self.logger.debug(f"Getting Etsy stats for {self.shop} to use for loading")
+        stats = self.scrape_etsy_stats()
+
+        # region Discord
         if discord_webhook:
             discord_handler = DiscordHandler(
                 service_name=type(self).__name__,
@@ -127,7 +125,6 @@ class AIOEtsyStats:
                 if not existing_feed_group:
                     self.logger.debug(f"Creating Feed Group \"{self.shop}\"")
                     self._aio.create_group(group=Group(name=self.shop, key=self.shop.lower()))
-
                 feeds = [
                     (Feed(name="Daily Order Count", key="daily-order-count"), "0"),
                     (Feed(name="Favorite Count", key="favorite-count"), stats.favorite_count),
@@ -196,23 +193,23 @@ class AIOEtsyStats:
         -# Exiting on host `{socket.gethostname()}`
         """).strip())
 
-    def set_selenium(self, selenium_host: str, selenium_port: int) -> None:
-        self.selenium_host = selenium_host
-        self.selenium_port = selenium_port
+    def _get_webdriver(self):
         if self.selenium_host and self.selenium_port:
-            print("Waiting up to 20s for selenium port to be open")
+            self.logger.debug("Waiting up to 20s for selenium port to be open")
             start = datetime.now()
             while (test_port(self.selenium_host, self.selenium_port) != 0) \
                     and (get_timedelta_from_now(start) < timedelta(seconds=20)):
                 sleep(1)
 
         if self.selenium_host and self.selenium_port:
-            self.driver = webdriver.Remote(
-                command_executor=f"http://{self.selenium_host}:{self.selenium_port}/wd/hub",
+            driver = webdriver.Remote(
+                command_executor=f"http://{self.selenium_host}:{self.selenium_port}",
                 options=webdriver.ChromeOptions()
             )
         else:
-            self.driver = webdriver.Chrome()
+            driver = webdriver.Chrome()
+
+        return driver
 
     def _get_starting_stats(self) -> dict:
         """Gets starting-stats feed and parses the json to dictionary"""
@@ -222,18 +219,24 @@ class AIOEtsyStats:
 
     def _get_selenium(self, url: str) -> Tuple[str, str]:
         """Gets webpage content with selenium"""
+        driver = None
         content = None
         title = None
         try:
-            self.driver.get(url)
-            title = self.driver.title
-            content = self.driver.page_source
+            driver = self._get_webdriver()
+            driver.get(url)
+            title = driver.title
+            content = driver.page_source
 
             if not content:
                 self.logger.debug(f"No content for url {url}. Page title: {title}")
         except Exception as e:
             self.logger.warning(f"An error occurred getting page {url} with Selenium Firefox")
             self.logger.exception(e)
+        finally:
+            if driver:
+                driver.close()
+                driver.quit()
 
         return title, content
 
@@ -264,7 +267,7 @@ class AIOEtsyStats:
         """Helper function to send values to AIO and parse for errors"""
         if self._aio:
             feed = self._get_feed_name(feed=feed)
-            
+
             try:
                 self.logger.debug(f"Updating AIO feed {feed} to {value}")
                 if isinstance(value, dict):
@@ -279,7 +282,7 @@ class AIOEtsyStats:
         return_val = default_value
         if self._aio:
             feed = self._get_feed_name(feed=feed)
-            
+
             try:
                 response = self._aio.receive(feed=feed)
                 if not silent:
@@ -301,15 +304,14 @@ class AIOEtsyStats:
         self.logger.info(textwrap.dedent(f"""
         {type(self).__name__} for **{self.shop}**
         
-        -# Reset time of {self.reset_datetime} has passed
+        -# Reset time of **{self.reset_datetime:%Y-%m-%d %H:%M:%S%z}** has passed
         -# Daily Order Count was `{self.daily_order_count}`
-        -# Daily Favorites was `{self.favorite_count - self.starting_favorite_count}
+        -# Daily Favorites was `{self.favorite_count - self.starting_favorite_count}`
         -# Daily Rating was `{(self.rating - self.starting_rating):4f}`
-        -# Daily Ratings was `{self.rating_count - self.rating}`
+        -# Daily Rating Count was `{self.rating_count - self.starting_rating_count}`
         -# Daily Sold was `{self.sold_count - self.starting_sold_count}`
-        -# Next reset is {new_reset_datetime}
+        -# Next reset is **{new_reset_datetime:%Y-%m-%d %H:%M:%S%z}**
         -# Public IP is `{get_public_ip()}`
-        -# Shawn ❤️ Nicole
         """).strip())
 
         # Update all things to be equal to current stats
@@ -428,7 +430,7 @@ class AIOEtsyStats:
                 errors += 1
             # endregion
 
-        return EtsyStoreStats(favorite_count=favorite_count, rating=rating, rating_count=rating_count, 
+        return EtsyStoreStats(favorite_count=favorite_count, rating=rating, rating_count=rating_count,
                               sold_count=sold_count, avatar_url=avatar_url, errors=errors)
 
     def _log_current_stats(self):
@@ -458,7 +460,6 @@ class AIOEtsyStats:
 
         # If we passed reset_datetime, process the reset using the current stats
         if datetime.now() > self.reset_datetime:
-            self.logger.info(f"Reset time of {self.reset_datetime} has been passed")
             self._reset_counts()
 
         # region Process Stats
@@ -525,9 +526,9 @@ class AIOEtsyStats:
         """Used to add the job. Can be called again if you have to remove it from the schedule"""
         minutes = self.scrape_interval_minutes
         if minutes > 9:
-            schedule.every(minutes).to(minutes+5).minutes.do(self.collect_and_publish)
+            schedule.every(minutes).to(minutes + 5).minutes.do(self.collect_and_publish)
         else:
-            schedule.every(minutes).to(minutes+1).minutes.do(self.collect_and_publish)
+            schedule.every(minutes).to(minutes + 1).minutes.do(self.collect_and_publish)
 
     def main(self):
         """Run this to have this run on a schedule"""
@@ -542,7 +543,6 @@ class AIOEtsyStats:
 
 
 if __name__ == "__main__":
-
     client = AIOEtsyStats(shop=environ.get("ETSY_STORE_NAME"),
                           default_reset_hour=int(environ.get("DEFAULT_RESET_HOUR", 14)),
                           scrape_interval_minutes=int(environ.get("SCRAPE_INTERVAL_MINUTES", 5)),
