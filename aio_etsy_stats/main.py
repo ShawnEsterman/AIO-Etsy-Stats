@@ -55,6 +55,15 @@ class AIOEtsyStats:
 
         # region selenium
         if selenium_host and selenium_port:
+            print("Waiting up 20s for selenium host to be up")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            test = False
+            start = datetime.now()
+            while not test and ((datetime.now() - start) < timedelta(seconds=20)):
+                connection = sock.connect_ex(('127.0.0.1', 80))
+                test = connection == 0
+            sock.close()
+
             self.driver = webdriver.Remote(
                 command_executor=f"http://{selenium_host}:{selenium_port}/wd/hub",
                 options=webdriver.ChromeOptions()
