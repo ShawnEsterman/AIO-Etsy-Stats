@@ -18,6 +18,12 @@ services:
       - LOG_CONFS=true #optional
     volumes:
       - ${WG_CONFIG_LOC}:/config
+    networks:
+      aio-etsy-stats:
+        aliases:
+          - wireguard
+          - selenium
+          - python
     ports:
       - 51820:51820/udp
       - 3879:4444
@@ -43,7 +49,7 @@ services:
       - aio_etsy_stats-wireguard
     restart: unless-stopped
     environment:
-      - SELENIUM_HOST=localhost
+      - SELENIUM_HOST=selenium
       - SELENIUM_PORT=3897
       - ETSY_STORE_NAME=${ETSY_STORE_NAME}
       - SCRAPE_INTERVAL_MINUTES=${SCRAPE_INTERVAL_MINUTES}
