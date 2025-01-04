@@ -5,9 +5,9 @@ networks:
     driver: bridge
 
 services:
-  wireguard-aio_etsy_stats:
+  aio_etsy_stats-wireguard:
     image: lscr.io/linuxserver/wireguard:latest
-    container_name: wireguard-aio_etsy_stats
+    container_name: aio_etsy_stats-wireguard
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
@@ -26,24 +26,24 @@ services:
       - net.ipv4.conf.all.src_valid_mark=1
     restart: unless-stopped
 
-  selenium:
+  aio_etsy_stats-selenium:
     image: selenium/standalone-chrome:4.27
-    container_name: selenium
-    network_mode: "service:wireguard-aio_etsy_stats"
+    container_name: aio_etsy_stats-selenium
+    network_mode: "service:aio_etsy_stats-wireguard"
     depends_on:
-      - wireguard-aio_etsy_stats
+      - aio_etsy_stats-wireguard
     restart: unless-stopped
     shm_size: 2g
 
-  aio_etsy_stats:
+  aio_etsy_stats-python:
     image: ghcr.io/shawnesterman/aio-etsy-stats:main
-    container_name: aio_etsy_stats
-    network_mode: "service:wireguard-aio_etsy_stats"
+    container_name: aio_etsy_stats-python
+    network_mode: "service:aio_etsy_stats-wireguard"
     depends_on:
-      - wireguard-aio_etsy_stats
+      - aio_etsy_stats-wireguard
     restart: unless-stopped
     environment:
-      - SELENIUM_HOST=selenium
+      - SELENIUM_HOST=aio_etsy_stats-selenium
       - SELENIUM_PORT=4444
       - ETSY_STORE_NAME=${ETSY_STORE_NAME}
       - SCRAPE_INTERVAL_MINUTES=${SCRAPE_INTERVAL_MINUTES}
