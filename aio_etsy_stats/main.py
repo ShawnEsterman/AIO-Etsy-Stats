@@ -10,7 +10,7 @@ from datetime import datetime, date, time, timedelta
 from os import environ, path
 from random import uniform, choice
 from time import sleep
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Tuple
 
 import Adafruit_IO
 import requests
@@ -184,10 +184,11 @@ class AIOEtsyStats:
         starting_stats_response = starting_stats_response.replace("\'", "\"")
         return json.loads(starting_stats_response)
 
-    def _get_selenium_page_source(self, url: str) -> str:
+    def _get_selenium(self, url: str) -> Tuple[str, str]:
         """Gets webpage content with selenium"""
         driver = None
         content = None
+        title = None
         try:
             if path.exists("/usr/bin/geckodriver"):
                 firefox_service = webdriver.FirefoxService(executable_path="/usr/bin/geckodriver")
@@ -197,6 +198,7 @@ class AIOEtsyStats:
 
             driver.get(url)
             sleep(2)
+            title = driver.title
             content = driver.page_source
 
             if not content:
@@ -205,11 +207,12 @@ class AIOEtsyStats:
         except Exception as e:
             self.logger.warning("An error occurred getting page with Selenium Firefox")
             self.logger.exception(e)
+            raise e
         finally:
             if driver:
                 driver.quit()
 
-        return content
+        return title, content
 
     def _validate_reset_hour(self):
         """Used to validate that the reset hour is set correctly in the event it is changed on AIO"""
@@ -312,7 +315,7 @@ class AIOEtsyStats:
         errors = 0
 
         soup = None
-        page_source = self._get_selenium_page_source(url=self.scrape_url)
+        title, page_source = self._get_selenium(url=self.scrape_url)
 
         if page_source:
             try:
@@ -323,6 +326,7 @@ class AIOEtsyStats:
                 errors += 1
         else:
             self.logger.warning("Nothing was returned for page source")
+            errors = 1
 
         if soup:
             # region Favorite Count
