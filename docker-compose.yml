@@ -16,6 +16,7 @@ services:
     ports:
       - 51820:51820/udp
       - 4444:4444
+      - 7900:7900
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
     restart: unless-stopped
@@ -28,9 +29,6 @@ services:
       - wireguard-aio_etsy_stats
     restart: unless-stopped
     shm_size: 2g
-    ports:
-      - 4444:4444
-      - 7900:7900
 
   aio_etsy_stats:
     image: ghcr.io/shawnesterman/aio-etsy-stats:main
