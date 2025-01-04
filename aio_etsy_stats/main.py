@@ -66,21 +66,16 @@ class AIOEtsyStats:
         self.scrape_url = f"https://www.etsy.com/shop/{shop}/sold"
         self.default_reset_hour = default_reset_hour
         self.scrape_interval_minutes = scrape_interval_minutes
+        self.selenium_host = selenium_host
+        self.selenium_port = selenium_port
 
         # region selenium
-        if selenium_host and selenium_port:
+        if self.selenium_host and self.selenium_port:
             print("Waiting up 20s for selenium host to be up")
             start = datetime.now()
-            while (test_port(selenium_host, selenium_port) != 0) \
+            while (test_port(self.selenium_host, self.selenium_port) != 0) \
                     and (get_timedelta_from_now(start) < timedelta(seconds=20)):
                 sleep(1)
-
-            self.driver = webdriver.Remote(
-                command_executor=f"http://{selenium_host}:{selenium_port}/wd/hub",
-                options=webdriver.ChromeOptions()
-            )
-        else:
-            self.driver = webdriver.Chrome()
         # endregion
 
         # Get the current stats just incase this hasn't been set up before or AIO is not used
@@ -182,7 +177,7 @@ class AIOEtsyStats:
 
         starting_stats = self._get_starting_stats()
 
-        # This can't be obtained from parsing, so if it doesn't exist in AIO default to 0 😓
+        # This can't be obtained from parsing, so if it doesn't exist in AIO default to stats 😓
         self.starting_favorite_count: int = int(starting_stats.get("starting-favorite-count", stats.favorite_count))
         self.starting_rating: float = float(starting_stats.get("starting-rating", stats.rating))
         self.starting_rating_count: int = int(starting_stats.get("starting-rating-count", stats.rating_count))
@@ -217,22 +212,31 @@ class AIOEtsyStats:
 
     def _get_selenium(self, url: str) -> Tuple[str, str]:
         """Gets webpage content with selenium"""
+        # region selenium
+        if self.selenium_host and self.selenium_port:
+            driver = webdriver.Remote(
+                command_executor=f"http://{self.selenium_host}:{self.selenium_port}/wd/hub",
+                options=webdriver.ChromeOptions()
+            )
+        else:
+            driver = webdriver.Chrome()
+        # endregion
+
         content = None
         title = None
         try:
-            self.driver.get(url)
-            title = self.driver.title
-            content = self.driver.page_source
+            driver.get(url)
+            title = driver.title
+            content = driver.page_source
 
             if not content:
-                self.logger.debug(f"No content for url {url}. Page title: {self.driver.title}")
-
+                self.logger.debug(f"No content for url {url}. Page title: {driver.title}")
         except Exception as e:
             self.logger.warning("An error occurred getting page with Selenium Firefox")
             self.logger.exception(e)
             raise e
         finally:
-            self.driver.quit()
+            driver.quit()
 
         return title, content
 
@@ -509,10 +513,10 @@ class AIOEtsyStats:
     def _add_scheduled_job(self):
         """Used to add the job. Can be called again if you have to remove it from the schedule"""
         minutes = self.scrape_interval_minutes
-        if minutes > 10:
-            schedule.every(minutes - 5).to(minutes).minutes.do(self.collect_and_publish)
+        if minutes > 9:
+            schedule.every(minutes).to(minutes+5).minutes.do(self.collect_and_publish)
         else:
-            schedule.every(minutes).to(minutes + 5).minutes.do(self.collect_and_publish)
+            schedule.every(minutes).to(minutes+1).minutes.do(self.collect_and_publish)
 
     def main(self):
         """Run this to have this run on a schedule"""
