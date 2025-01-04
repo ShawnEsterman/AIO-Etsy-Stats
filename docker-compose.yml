@@ -20,7 +20,7 @@ services:
       - ${WG_CONFIG_LOC}:/config
     ports:
       - 51820:51820/udp
-      - 4444:4444
+      - 3879:4444
       - 7900:7900
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
@@ -44,7 +44,7 @@ services:
     restart: unless-stopped
     environment:
       - SELENIUM_HOST=aio_etsy_stats-selenium
-      - SELENIUM_PORT=4444
+      - SELENIUM_PORT=3897
       - ETSY_STORE_NAME=${ETSY_STORE_NAME}
       - SCRAPE_INTERVAL_MINUTES=${SCRAPE_INTERVAL_MINUTES}
       - DEFAULT_RESET_HOUR=${DEFAULT_RESET_HOUR}
