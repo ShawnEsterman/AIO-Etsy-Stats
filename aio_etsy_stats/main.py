@@ -56,9 +56,6 @@ def get_timedelta_from_now(start: datetime) -> timedelta:
     return result
 
 
-
-
-
 class AIOEtsyStats:
     """Class to store and record stats for Etsy"""
     def __init__(self, shop: str, default_reset_hour: int = 14, scrape_interval_minutes: int = 10,
@@ -109,9 +106,8 @@ class AIOEtsyStats:
         
         -# Scraping for store metrics on host `{socket.gethostname()}`
         -# Public IP is `{get_public_ip()}`
-        -# Scraping using Selinium Chrome
+        -# Scraping using Selenium Chrome
         -# Scrapes run about every {self.scrape_interval_minutes} minutes
-        -# Shawn ❤️ Nicole
         """).strip())
 
         # region Setup AIO
@@ -249,14 +245,14 @@ class AIOEtsyStats:
         if desired_reset_hour:
             # If the server shows the reset_hour different, update it
             if self.reset_hour != desired_reset_hour:
-                self.logger.info(f"Changing reset hour from {self.reset_hour} to {desired_reset_hour}")
+                self.logger.debug(f"Changing reset hour from {self.reset_hour} to {desired_reset_hour}")
                 self.reset_hour = desired_reset_hour
 
         # If the reset hour isn't correct for the existing datetime, update it
         if any([self.reset_datetime.hour != self.reset_hour, self.reset_datetime.minute != 0]):
             new_reset_datetime = self.reset_datetime
             new_reset_datetime = new_reset_datetime.replace(hour=self.reset_hour, minute=0)
-            self.logger.info(f"Changing reset time from {self.reset_datetime} to {new_reset_datetime}")
+            self.logger.debug(f"Changing reset time from {self.reset_datetime} to {new_reset_datetime}")
             self.reset_datetime = new_reset_datetime
             self._send_starting_stats()
 
