@@ -41,6 +41,13 @@ class EtsyStoreStats(NamedTuple):
     avatar_url: Optional[str] = None
     errors: int = 0
 
+def test_port(hostname: str, port: int):
+    """Tests if port is open on remote host"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(2)
+    result = sock.connect_ex((hostname, int(port)))
+    sock.close()
+    return result
 
 class AIOEtsyStats:
     """Class to store and record stats for Etsy"""
@@ -56,14 +63,9 @@ class AIOEtsyStats:
         # region selenium
         if selenium_host and selenium_port:
             print("Waiting up 20s for selenium host to be up")
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
-            connection = sock.connect_ex((selenium_host, int(selenium_port)))
             start = datetime.now()
-            while (connection != 0) and ((datetime.now() - start) < timedelta(seconds=20)):
-                connection = sock.connect_ex((selenium_host, int(selenium_port)))
+            while (test_port(selenium_host, selenium_port) != 0) and ((datetime.now() - start) < timedelta(seconds=20)):
                 sleep(1)
-            sock.close()
 
             self.driver = webdriver.Remote(
                 command_executor=f"http://{selenium_host}:{selenium_port}/wd/hub",
