@@ -60,7 +60,7 @@ class AIOEtsyStats:
             test = False
             start = datetime.now()
             while not test and ((datetime.now() - start) < timedelta(seconds=20)):
-                connection = sock.connect_ex(('127.0.0.1', 80))
+                connection = sock.connect_ex((selenium_host, int(selenium_port)))
                 test = connection == 0
             sock.close()
 
