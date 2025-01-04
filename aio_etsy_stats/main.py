@@ -41,12 +41,19 @@ class EtsyStoreStats(NamedTuple):
     avatar_url: Optional[str] = None
     errors: int = 0
 
-def test_port(hostname: str, port: int):
+
+def test_port(hostname: str, port: int) -> int:
     """Tests if port is open on remote host"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
     result = sock.connect_ex((hostname, int(port)))
+    print(result)
     sock.close()
+    return result
+
+def get_timedelta_from_now(start: datetime) -> timedelta:
+    result = datetime.now() - start
+    print(result)
     return result
 
 class AIOEtsyStats:
@@ -64,7 +71,8 @@ class AIOEtsyStats:
         if selenium_host and selenium_port:
             print("Waiting up 20s for selenium host to be up")
             start = datetime.now()
-            while (test_port(selenium_host, selenium_port) != 0) and ((datetime.now() - start) < timedelta(seconds=20)):
+            while (test_port(selenium_host, selenium_port) != 0) \
+                    and (get_timedelta_from_now(start) < timedelta(seconds=20)):
                 sleep(1)
 
             self.driver = webdriver.Remote(
