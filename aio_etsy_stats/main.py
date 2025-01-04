@@ -51,6 +51,7 @@ class AIOEtsyStats:
         self.scrape_url = f"https://www.etsy.com/shop/{shop}/sold"
         self.default_reset_hour = default_reset_hour
         self.scrape_interval_minutes = scrape_interval_minutes
+        self.driver = webdriver.Chrome()
 
         # Get the current stats just incase this hasn't been set up before or AIO is not used
         self.logger = DummyLogger()  # Temporary
@@ -186,31 +187,22 @@ class AIOEtsyStats:
 
     def _get_selenium(self, url: str) -> Tuple[str, str]:
         """Gets webpage content with selenium"""
-        driver = None
         content = None
         title = None
         try:
-            if path.exists("/usr/bin/geckodriver"):
-                firefox_service = webdriver.FirefoxService(executable_path="/usr/bin/geckodriver")
-                driver = webdriver.Firefox(service=firefox_service)
-            else:
-                driver = webdriver.Firefox()
-
-            driver.get(url)
-            sleep(2)
-            title = driver.title
-            content = driver.page_source
+            self.driver.get(url)
+            title = self.driver.title
+            content = self.driver.page_source
 
             if not content:
-                self.logger.debug(f"No content for url {url}. Page title: {driver.title}")
+                self.logger.debug(f"No content for url {url}. Page title: {self.driver.title}")
 
         except Exception as e:
             self.logger.warning("An error occurred getting page with Selenium Firefox")
             self.logger.exception(e)
             raise e
         finally:
-            if driver:
-                driver.quit()
+            self.driver.quit()
 
         return title, content
 
