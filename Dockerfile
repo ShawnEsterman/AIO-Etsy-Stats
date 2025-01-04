@@ -5,7 +5,9 @@ ENV PIP_ROOT_USER_ACTION="ignore"
 
 USER root
 
-RUN apt-get -y update && apt-get install -y python3-full python3 python3-pip python3-venv python3-setuptools
+RUN apt-get -y update && apt-get install -y python3-full python3 python3-pip python3-venv python3-setuptools \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --chown=1200:1201 . /app
 
