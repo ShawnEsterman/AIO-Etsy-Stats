@@ -7,7 +7,7 @@ COPY . /app
 
 RUN python3 -m venv /app \
     && source /app/bin/activate \
-    && pip3 intsall setuptools --upgrade \
+    && pip3 install setuptools --upgrade \
     && pip3 install /app/.
 
 ENTRYPOINT [ "source", "/app/bin/activate" ]
