@@ -34,6 +34,10 @@ services:
     image: selenium/standalone-chrome:4.27
     container_name: aio_etsy_stats-selenium
     network_mode: "service:aio_etsy_stats-wireguard"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
     depends_on:
       - aio_etsy_stats-wireguard
     restart: unless-stopped
@@ -47,6 +51,9 @@ services:
       - aio_etsy_stats-wireguard
     restart: unless-stopped
     environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
       - SELENIUM_HOST=localhost
       - SELENIUM_PORT=4444
       - ETSY_STORE_NAME=${ETSY_STORE_NAME}
@@ -57,3 +64,6 @@ services:
       - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
       - DISCORD_AVATAR_URL=${DISCORD_AVATAR_URL}
       - DEV_LOVE_NOTE=${DEV_LOVE_NOTE}
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro

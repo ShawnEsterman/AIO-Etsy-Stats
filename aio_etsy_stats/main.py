@@ -103,6 +103,7 @@ class AIOEtsyStats:
         {type(self).__name__} for **{self.shop}**
         
         -# Scraping for store metrics on host `{socket.gethostname()}`
+        -# Current time is **{datetime.now():%Y-%m-%d %H:%M:%S%z}**
         -# Public IP is `{get_public_ip()}`
         -# Scraping using Selenium Chrome
         -# Scrapes run about every **{self.scrape_interval_minutes}** minutes
