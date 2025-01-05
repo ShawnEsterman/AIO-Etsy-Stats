@@ -99,14 +99,17 @@ class AIOEtsyStats:
         else:
             self.logger.debug(f"Initial Stats were returned okay. Example... sold {stats.sold_count}")
 
-        self.logger.info(textwrap.dedent(f"""
+        message = textwrap.dedent(f"""
         {type(self).__name__} for **{self.shop}**
         
         -# Scraping for store metrics on host `{socket.gethostname()}`
         -# Public IP is `{get_public_ip()}`
         -# Scraping using Selenium Chrome
-        -# Scrapes run about every {self.scrape_interval_minutes} minutes
-        """).strip())
+        -# Scrapes run about every **{self.scrape_interval_minutes}** minutes
+        """).strip()
+        if bool(environ.get("DEV_LOVE_NOTE", "0")):
+            message += "\n-# *Shawn ❤️ Nicole*"
+        self.logger.info(message.strip())
 
         # region Setup AIO
         if not all([aio_username, aio_password]):
@@ -301,18 +304,22 @@ class AIOEtsyStats:
         if new_reset_datetime < datetime.now():
             # Just incase you start this app after the current day's reset timer hit
             new_reset_datetime = self.reset_datetime + timedelta(days=1)
-        self.logger.info(textwrap.dedent(f"""
+        message = textwrap.dedent(f"""
         {type(self).__name__} for **{self.shop}**
         
         -# Reset time of **{self.reset_datetime:%Y-%m-%d %H:%M:%S%z}** has passed
-        -# Daily Order Count was `{self.daily_order_count}`
-        -# Daily Favorites was `{self.favorite_count - self.starting_favorite_count}`
-        -# Daily Rating was `{(self.rating - self.starting_rating):4f}`
-        -# Daily Rating Count was `{self.rating_count - self.starting_rating_count}`
-        -# Daily Sold was `{self.sold_count - self.starting_sold_count}`
+        -# Daily Order Count was **{self.daily_order_count}**
+        -# Daily Favorites was **{self.favorite_count - self.starting_favorite_count}**
+        -# Daily Rating was **{(self.rating - self.starting_rating):4f}**
+        -# Daily Rating Count was **{self.rating_count - self.starting_rating_count}**
+        -# Daily Sold was **{self.sold_count - self.starting_sold_count}**
         -# Next reset is **{new_reset_datetime:%Y-%m-%d %H:%M:%S%z}**
         -# Public IP is `{get_public_ip()}`
-        """).strip())
+        """).strip()
+        if bool(environ.get("DEV_LOVE_NOTE", "0")):
+            message += "\n-# *Shawn ❤️ Nicole*"
+        self.logger.info(message.strip())
+
 
         # Update all things to be equal to current stats
         self.reset_datetime = new_reset_datetime
@@ -468,7 +475,7 @@ class AIOEtsyStats:
             self.logger.info(textwrap.dedent(f"""
             Favorites for **{self.shop}**
 
-            -# Count changed `{self.favorite_count:,}` -> `{stats.favorite_count:,}`
+            -# Count changed **{self.favorite_count:,}** -> **{stats.favorite_count:,}**
             """).strip())
             self.favorite_count = stats.favorite_count
             self._send_aio(feed="favorite-count", value=self.favorite_count)
@@ -480,7 +487,7 @@ class AIOEtsyStats:
             message = textwrap.dedent(f"""
             Rating for **{self.shop}**
 
-            -# Count changed `{self.rating_count:,}` -> `{stats.rating_count:,}`
+            -# Count changed **{self.rating_count:,}** -> **{stats.rating_count:,}**
             """).strip()
             self.rating_count = stats.rating_count
             self._send_aio(feed="rating-count", value=self.rating_count)
@@ -488,9 +495,9 @@ class AIOEtsyStats:
             # If rating did not change, do not say it did
             rating_change = round((stats.rating - self.rating), 4)
             if rating_change == 0.0:
-                message += f"\n-# Overall is `{self.rating:.4f}`"
+                message += f"\n-# Overall is **{self.rating:.4f}**"
             else:
-                message += f"\n-# Overall changed `{self.rating:.4f}` -> `{stats.rating:.4f}`"
+                message += f"\n-# Overall changed **{self.rating:.4f}** -> **{stats.rating:.4f}**"
                 self.rating = stats.rating
                 self._send_aio(feed="rating", value=self.rating)
 
@@ -507,15 +514,15 @@ class AIOEtsyStats:
             message = textwrap.dedent(f"""
             Orders for **{self.shop}**
 
-            -# Sold Count changed `{self.sold_count:,}` -> `{stats.sold_count:,}`
+            -# Sold Count changed **{self.sold_count:,}** -> **{stats.sold_count:,}**
             """).strip()
             if self.sold_count < stats.sold_count:
-                message += f"\n-# Daily Order Count changed from `{self.daily_order_count:,}` -> " \
-                           f"`{(self.daily_order_count + 1):,}`"
+                message += f"\n-# Daily Order Count changed from **{self.daily_order_count:,}** -> " \
+                           f"**{(self.daily_order_count + 1):,}**"
                 self.daily_order_count += 1
                 self._send_aio(feed="daily-order-count", value=self.daily_order_count)
             else:
-                message += f"\n-# Daily Order Count is `{self.daily_order_count:,}`"
+                message += f"\n-# Daily Order Count is **{self.daily_order_count:,}**"
             self.logger.info(message.strip())
 
             self.sold_count = stats.sold_count
